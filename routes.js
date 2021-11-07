@@ -1,7 +1,7 @@
 const responseUtils = require('./utils/responseUtils');
 const { acceptsJson, isJson, parseBodyJson } = require('./utils/requestUtils');
 const { renderPublic } = require('./utils/render');
-const { emailInUse, getAllUsers, saveNewUser, validateUser } = require('./utils/users');
+const { emailInUse, getAllUsers, saveNewUser, validateUser} = require('./utils/users');
 
 /**
  * Known API routes and their allowed methods
@@ -82,12 +82,12 @@ const handleRequest = async(request, response) => {
   // Check for allowable methods
   if (!allowedMethods[filePath].includes(method.toUpperCase())) {
     return responseUtils.methodNotAllowed(response);
-  }
+  }       
 
   // Require a correct accept header (require 'application/json' or '*/*')
   if (!acceptsJson(request)) {
     return responseUtils.contentTypeNotAcceptable(response);
-  }
+  }   
 
   // GET all users
   if (filePath === '/api/users' && method.toUpperCase() === 'GET') {
@@ -97,7 +97,9 @@ const handleRequest = async(request, response) => {
     // ./utils/responseUtils.js to send the response in JSON format.
     //
     // TODO: 8.5 Add authentication (only allowed to users with role "admin")
-    return await getAllUsers(response);
+
+    const users = await getAllUsers(response);
+    responseUtils.sendJson(response, users, code = 200);
 
   }
 
@@ -107,11 +109,19 @@ const handleRequest = async(request, response) => {
     if (!isJson(request)) {
       return responseUtils.badRequest(response, 'Invalid Content-Type. Expected application/json');
     }
-
+    
     // TODO: 8.4 Implement registration
     // You can use parseBodyJson(request) method from utils/requestUtils.js to parse request body.
     // 
-    throw new Error('Not Implemented');
+    const userJson = await parseBodyJson(request);
+    if(emailInUse(userJson.email) || validateUser(userJson).length != 0)
+    {
+      return responseUtils.badRequest(response, "400 Bad Request");
+    } 
+    userJson.role = 'customer';
+    const createdUser = await saveNewUser(userJson);
+    response.writeHead(201, "201 Created");
+    return responseUtils.sendJson(response, createdUser, 201);
   }
 };
 

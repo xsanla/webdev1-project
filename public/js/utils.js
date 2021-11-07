@@ -188,3 +188,4 @@ const getAllProductsFromCart = () => {
 const clearCart = () => {
   sessionStorage.clear();
 };
+

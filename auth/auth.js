@@ -1,3 +1,6 @@
+
+const users = require('./utils/users');
+const requestUtils = require('./utils/requestUtils');
 /**
  * Get current user based on the request headers
  *
@@ -11,7 +14,12 @@ const getCurrentUser = async request => {
   // and getUser(email, password) function from utils/users.js to get the currently
   // logged in user
 
-  throw new Error('Not Implemented');
+   //throw new Error('Not Implemented');   
+
+  const arrayCredentials = requestUtils.getCredentials(request);
+  const email = arrayCredentials[0];
+  const password = arrayCredentials[1];
+  return users.getUser(email, password);
 };
 
 module.exports = { getCurrentUser };

@@ -1,7 +1,8 @@
 const responseUtils = require('./utils/responseUtils');
 const { acceptsJson, isJson, parseBodyJson } = require('./utils/requestUtils');
 const { renderPublic } = require('./utils/render');
-const { emailInUse, getAllUsers, saveNewUser, validateUser} = require('./utils/users');
+const { emailInUse, getAllUsers, saveNewUser, validateUser, deleteUserById, updateUserRole, getUserById} = require('./utils/users');
+const { getCurrentUser } = require('./auth/auth');
 
 /**
  * Known API routes and their allowed methods
@@ -70,7 +71,30 @@ const handleRequest = async(request, response) => {
   if (matchUserId(filePath)) {
     // TODO: 8.6 Implement view, update and delete a single user by ID (GET, PUT, DELETE)
     // You can use parseBodyJson(request) from utils/requestUtils.js to parse request body
-    throw new Error('Not Implemented');
+    //throw new Error('Not Implemented');
+
+   
+   const jsonData = await parseBodyJson(request);  
+   console.log(jsonData);
+   //console.log(body._id);
+   if (method.toUpperCase() === 'GET') {
+        // view a single user
+    //   console.log(await responseUtils.sendJson(response, body, 200));
+  //return await responseUtils.sendJson(response, body, 200);   
+    
+   } else if (method.toUpperCase() === 'PUT') {
+     // update user 
+   //return updateUserRole(body._id);
+
+   } else if (method.toUpperCase() === 'DELETE') {
+
+    // delete a single user
+    //console.log(body._id);
+    //console.log(deleteUserById(body._id));
+    //return deleteUserById(body._id);
+
+   }  
+
   }
 
   // Default to 404 Not Found if unknown url
@@ -96,12 +120,27 @@ const handleRequest = async(request, response) => {
     // Then you can use the sendJson(response, payload, code = 200) from 
     // ./utils/responseUtils.js to send the response in JSON format.
     //
-    // TODO: 8.5 Add authentication (only allowed to users with role "admin")
+    //const users = await getAllUsers(response);
+    //responseUtils.sendJson(response, users, code = 200);
+ // TODO: 8.5 Add authentication (only allowed to users with role "admin")
 
-    const users = await getAllUsers(response);
-    responseUtils.sendJson(response, users, code = 200);
+// returns null, undefined or obj     
+const data = await getCurrentUser(request); 
+console.log(data); 
+ if (data === null || data === undefined) { 
+    return await responseUtils.basicAuthChallenge(response);  
+ }  
+  // if user role is customer   
+ if (data.role.toUpperCase() === 'CUSTOMER') { 
+   return await responseUtils.forbidden(response);  
+  } 
+   // if user role is admin  
+  if (data.role.toUpperCase() === 'ADMIN') { 
+    const users = getAllUsers(response);    
+  return await responseUtils.sendJson(response, users, 200);   
+ }  
 
-  }
+} 
 
   // register new user
   if (filePath === '/api/register' && method.toUpperCase() === 'POST') {
@@ -114,7 +153,7 @@ const handleRequest = async(request, response) => {
     // You can use parseBodyJson(request) method from utils/requestUtils.js to parse request body.
     // 
     const userJson = await parseBodyJson(request);
-    if(emailInUse(userJson.email) || validateUser(userJson).length != 0)
+    if(emailInUse(userJson.email) || validateUser(userJson).length !== 0)
     {
       return responseUtils.badRequest(response, "400 Bad Request");
     } 

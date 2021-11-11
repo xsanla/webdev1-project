@@ -95,9 +95,9 @@ const getUserById = userId => {
 const deleteUserById = userId => {
   // TODO: 8.4 Delete user with a given id
   // Hint: Array's findIndex() and splice() methods could be handy here.
-  const validateUserId = (element) => element._id == userId;
+  const validateUserId = (element) => element._id === userId;
   const index = data.users.findIndex(validateUserId);
-  if (index != -1)
+  if (index !== -1)
   {
     const user = data.users.splice(index, 1);
     return user[0];
@@ -154,7 +154,7 @@ const updateUserRole = (userId, role) => {
   // TODO: 8.3 Update user's role
   const user = data.users.find(user => user._id === userId);
   
-  if (typeof(user) != 'undefined')
+  if (typeof(user) !== 'undefined')
   {
     if(data.roles.includes(role))
     {

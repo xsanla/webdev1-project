@@ -1,7 +1,7 @@
 const responseUtils = require('./utils/responseUtils');
 const { acceptsJson, isJson, parseBodyJson } = require('./utils/requestUtils');
 const { renderPublic } = require('./utils/render');
-const { emailInUse, getAllUsers, saveNewUser, validateUser} = require('./utils/users');
+const { emailInUse, getAllUsers, saveNewUser, validateUser, deleteUserById, updateUserRole, getUserById} = require('./utils/users');
 const { getCurrentUser } = require('./auth/auth');
 
 /**
@@ -71,8 +71,29 @@ const handleRequest = async(request, response) => {
   if (matchUserId(filePath)) {
     // TODO: 8.6 Implement view, update and delete a single user by ID (GET, PUT, DELETE)
     // You can use parseBodyJson(request) from utils/requestUtils.js to parse request body
-    throw new Error('Not Implemented');
+    //throw new Error('Not Implemented');
+
    
+   const jsonData = await parseBodyJson(request);  
+   console.log(jsonData);
+   //console.log(body._id);
+   if (method.toUpperCase() === 'GET') {
+        // view a single user
+    //   console.log(await responseUtils.sendJson(response, body, 200));
+  //return await responseUtils.sendJson(response, body, 200);   
+    
+   } else if (method.toUpperCase() === 'PUT') {
+     // update user 
+   //return updateUserRole(body._id);
+
+   } else if (method.toUpperCase() === 'DELETE') {
+
+    // delete a single user
+    //console.log(body._id);
+    //console.log(deleteUserById(body._id));
+    //return deleteUserById(body._id);
+
+   }  
 
   }
 
@@ -114,7 +135,7 @@ console.log(data);
    return await responseUtils.forbidden(response);  
   } 
    // if user role is admin  
-  if (data.role.toUpperCase() === 'ADMIN')  { 
+  if (data.role.toUpperCase() === 'ADMIN') { 
     const users = getAllUsers(response);    
   return await responseUtils.sendJson(response, users, 200);   
  }  
@@ -132,7 +153,7 @@ console.log(data);
     // You can use parseBodyJson(request) method from utils/requestUtils.js to parse request body.
     // 
     const userJson = await parseBodyJson(request);
-    if(emailInUse(userJson.email) || validateUser(userJson).length != 0)
+    if(emailInUse(userJson.email) || validateUser(userJson).length !== 0)
     {
       return responseUtils.badRequest(response, "400 Bad Request");
     } 

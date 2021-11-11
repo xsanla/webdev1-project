@@ -2,6 +2,7 @@ const responseUtils = require('./utils/responseUtils');
 const { acceptsJson, isJson, parseBodyJson } = require('./utils/requestUtils');
 const { renderPublic } = require('./utils/render');
 const { emailInUse, getAllUsers, saveNewUser, validateUser} = require('./utils/users');
+const { getCurrentUser } = require('./auth/auth');
 
 /**
  * Known API routes and their allowed methods
@@ -71,6 +72,8 @@ const handleRequest = async(request, response) => {
     // TODO: 8.6 Implement view, update and delete a single user by ID (GET, PUT, DELETE)
     // You can use parseBodyJson(request) from utils/requestUtils.js to parse request body
     throw new Error('Not Implemented');
+   
+
   }
 
   // Default to 404 Not Found if unknown url
@@ -96,12 +99,27 @@ const handleRequest = async(request, response) => {
     // Then you can use the sendJson(response, payload, code = 200) from 
     // ./utils/responseUtils.js to send the response in JSON format.
     //
-    // TODO: 8.5 Add authentication (only allowed to users with role "admin")
+    //const users = await getAllUsers(response);
+    //responseUtils.sendJson(response, users, code = 200);
+ // TODO: 8.5 Add authentication (only allowed to users with role "admin")
 
-    const users = await getAllUsers(response);
-    responseUtils.sendJson(response, users, code = 200);
+// returns null, undefined or obj     
+const data = await getCurrentUser(request); 
+console.log(data); 
+ if (data === null || data === undefined) { 
+    return await responseUtils.basicAuthChallenge(response);  
+ }  
+  // if user role is customer   
+ if (data.role.toUpperCase() === 'CUSTOMER') { 
+   return await responseUtils.forbidden(response);  
+  } 
+   // if user role is admin  
+  if (data.role.toUpperCase() === 'ADMIN')  { 
+    const users = getAllUsers(response);    
+  return await responseUtils.sendJson(response, users, 200);   
+ }  
 
-  }
+} 
 
   // register new user
   if (filePath === '/api/register' && method.toUpperCase() === 'POST') {

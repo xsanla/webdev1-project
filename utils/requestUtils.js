@@ -12,6 +12,7 @@ const getCredentials = request => {
   //  See: https://attacomsian.com/blog/nodejs-base64-encode-decode
   //       https://stackabuse.com/encoding-and-decoding-base64-strings-in-node-js/
   throw new Error('Not Implemented');
+  
 };
 
 /**

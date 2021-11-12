@@ -3,6 +3,7 @@ const { acceptsJson, isJson, parseBodyJson } = require('./utils/requestUtils');
 const { renderPublic } = require('./utils/render');
 const { emailInUse, getAllUsers, saveNewUser, validateUser, deleteUserById, updateUserRole, getUserById} = require('./utils/users');
 const { getCurrentUser } = require('./auth/auth');
+const users = require('./utils/users');
 
 /**
  * Known API routes and their allowed methods
@@ -72,27 +73,44 @@ const handleRequest = async(request, response) => {
     // TODO: 8.6 Implement view, update and delete a single user by ID (GET, PUT, DELETE)
     // You can use parseBodyJson(request) from utils/requestUtils.js to parse request body
     //throw new Error('Not Implemented');
+ 
 
-   
-   const jsonData = await parseBodyJson(request);  
-   console.log(jsonData);
-   //console.log(body._id);
-   if (method.toUpperCase() === 'GET') {
-        // view a single user
-    //   console.log(await responseUtils.sendJson(response, body, 200));
-  //return await responseUtils.sendJson(response, body, 200);   
-    
+    if (method.toUpperCase() === 'GET') {
+      // view a single user  
+      
+      const data = await getCurrentUser(request);
+      if (data === null || data === undefined) { 
+        return await responseUtils.basicAuthChallenge(response);  
+      } 
+
+      const id = filePath.split("/")[3];
+      if(getUserById(id) == null){
+        return await responseUtils.notFound(response);
+      }
+
+      if (data.role.toUpperCase() === 'CUSTOMER') { 
+        return await responseUtils.forbidden(response);  
+      }
+      if (data.role.toUpperCase() === 'ADMIN') {    
+        return await responseUtils.sendJson(response, data, 200);   
+      }
+      
+      
+
    } else if (method.toUpperCase() === 'PUT') {
-     // update user 
-   //return updateUserRole(body._id);
+      // update user 
+      
+      
+      return 
 
    } else if (method.toUpperCase() === 'DELETE') {
 
     // delete a single user
     //console.log(body._id);
     //console.log(deleteUserById(body._id));
+   
+    
     //return deleteUserById(body._id);
-
    }  
 
   }
@@ -126,7 +144,6 @@ const handleRequest = async(request, response) => {
 
 // returns null, undefined or obj     
 const data = await getCurrentUser(request); 
-console.log(data); 
  if (data === null || data === undefined) { 
     return await responseUtils.basicAuthChallenge(response);  
  }  

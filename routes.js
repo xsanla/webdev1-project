@@ -3,11 +3,7 @@ const { acceptsJson, isJson, parseBodyJson, getCredentials } = require('./utils/
 const { renderPublic } = require('./utils/render');
 const { emailInUse, getAllUsers, saveNewUser, validateUser, deleteUserById, updateUserRole, getUserById} = require('./utils/users');
 const { getCurrentUser } = require('./auth/auth');
-<<<<<<< HEAD
-const users = require('./utils/users');
-=======
 const utils = require('./public/js/utils.js');
->>>>>>> main
 
 /**
  * Known API routes and their allowed methods
@@ -77,75 +73,6 @@ const handleRequest = async(request, response) => {
     // TODO: 8.6 Implement view, update and delete a single user by ID (GET, PUT, DELETE)
     // You can use parseBodyJson(request) from utils/requestUtils.js to parse request body
     //throw new Error('Not Implemented');
-<<<<<<< HEAD
- 
-
-    if (method.toUpperCase() === 'GET') {
-      // view a single user  
-      
-      const data = await getCurrentUser(request);
-      if (data === null || data === undefined) { 
-        return await responseUtils.basicAuthChallenge(response);  
-      } 
-
-      const id = filePath.split("/")[3];
-      if(getUserById(id) == null){
-        return await responseUtils.notFound(response);
-      }
-
-      if (data.role.toUpperCase() === 'CUSTOMER') { 
-        return await responseUtils.forbidden(response);  
-      }
-      if (data.role.toUpperCase() === 'ADMIN') {    
-        return await responseUtils.sendJson(response, data, 200);   
-      }
-      
-      
-
-   } else if (method.toUpperCase() === 'PUT') {
-      // update user 
-      const currentUser = await getCurrentUser(request);
-      
-      
-      if (currentUser === null || currentUser === undefined) { 
-        return await responseUtils.basicAuthChallenge(response);  
-      } 
-  
-      const data = await parseBodyJson(request);
-     
-      if(!['admin','customer'].includes(data.role)){
-        return await responseUtils.badRequest(response);
-      }
-      if(data._id == null){
-        if (currentUser.role.toUpperCase() === 'CUSTOMER') { 
-          return await responseUtils.forbidden(response);  
-        }
-        if (currentUser.role.toUpperCase() === 'ADMIN') {
-          return await responseUtils.sendJson(response, currentUser, 200);
-        }
-      }
-
-      if(data.role == null){
-        return await responseUtils.badRequest(response);
-      } else if (['admin','customer'].includes(data.role)) {
-        
-        
-        console.log("returning data");
-        console.log(data);
-        console.log(typeof(data.role));
-        return await responseUtils.sendJson(response, data, 200);
-      }
-
-
-
-      
-      
-      // const role = await parseBodyJson(request);
-      // console.log(role);
-      // console.log(data);
-      
-      return 
-=======
     //const userCredentials =  getCredentials(request);
     const id = filePath.split("/")[3];
     const requestSender = await getCurrentUser(request);  
@@ -167,7 +94,6 @@ const handleRequest = async(request, response) => {
 
     if (requestSender.role.toUpperCase() === 'CUSTOMER') {
 
->>>>>>> main
 
       return await responseUtils.forbidden(response);  
     } 
@@ -192,7 +118,7 @@ const handleRequest = async(request, response) => {
             
       if (requestSender.role.toUpperCase()=== 'ADMIN') {             
           const body = await parseBodyJson(request);
-          console.log(body);
+          
                        
           if (body.role && (body.role==='admin' || body.role==='customer'))
           {
@@ -210,19 +136,9 @@ const handleRequest = async(request, response) => {
         
       }
 
-<<<<<<< HEAD
-    // delete a single user
-    //console.log(body._id);
-    //console.log(deleteUserById(body._id));
-   
-    
-    //return deleteUserById(body._id);
-   }  
-=======
       if (method.toUpperCase() === 'DELETE') {
 
         if (requestSender === null || requestSender === undefined) { 
->>>>>>> main
 
           return await responseUtils.basicAuthChallenge(response);         
           

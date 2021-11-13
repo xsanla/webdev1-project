@@ -99,7 +99,45 @@ const handleRequest = async(request, response) => {
 
    } else if (method.toUpperCase() === 'PUT') {
       // update user 
+      const currentUser = await getCurrentUser(request);
       
+      
+      if (currentUser === null || currentUser === undefined) { 
+        return await responseUtils.basicAuthChallenge(response);  
+      } 
+  
+      const data = await parseBodyJson(request);
+     
+      if(!['admin','customer'].includes(data.role)){
+        return await responseUtils.badRequest(response);
+      }
+      if(data._id == null){
+        if (currentUser.role.toUpperCase() === 'CUSTOMER') { 
+          return await responseUtils.forbidden(response);  
+        }
+        if (currentUser.role.toUpperCase() === 'ADMIN') {
+          return await responseUtils.sendJson(response, currentUser, 200);
+        }
+      }
+
+      if(data.role == null){
+        return await responseUtils.badRequest(response);
+      } else if (['admin','customer'].includes(data.role)) {
+        
+        
+        console.log("returning data");
+        console.log(data);
+        console.log(typeof(data.role));
+        return await responseUtils.sendJson(response, data, 200);
+      }
+
+
+
+      
+      
+      // const role = await parseBodyJson(request);
+      // console.log(role);
+      // console.log(data);
       
       return 
 

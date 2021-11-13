@@ -1,9 +1,13 @@
 const responseUtils = require('./utils/responseUtils');
-const { acceptsJson, isJson, parseBodyJson } = require('./utils/requestUtils');
+const { acceptsJson, isJson, parseBodyJson, getCredentials } = require('./utils/requestUtils');
 const { renderPublic } = require('./utils/render');
 const { emailInUse, getAllUsers, saveNewUser, validateUser, deleteUserById, updateUserRole, getUserById} = require('./utils/users');
 const { getCurrentUser } = require('./auth/auth');
+<<<<<<< HEAD
 const users = require('./utils/users');
+=======
+const utils = require('./public/js/utils.js');
+>>>>>>> main
 
 /**
  * Known API routes and their allowed methods
@@ -73,6 +77,7 @@ const handleRequest = async(request, response) => {
     // TODO: 8.6 Implement view, update and delete a single user by ID (GET, PUT, DELETE)
     // You can use parseBodyJson(request) from utils/requestUtils.js to parse request body
     //throw new Error('Not Implemented');
+<<<<<<< HEAD
  
 
     if (method.toUpperCase() === 'GET') {
@@ -140,9 +145,72 @@ const handleRequest = async(request, response) => {
       // console.log(data);
       
       return 
+=======
+    //const userCredentials =  getCredentials(request);
+    const id = filePath.split("/")[3];
+    const requestSender = await getCurrentUser(request);  
+    const userData = getUserById(id);
 
-   } else if (method.toUpperCase() === 'DELETE') {
+   if (method.toUpperCase() === 'GET') {
+        // view a single user
+        //const data = await getCurrentUser(request);   
 
+       if (requestSender === null || requestSender === undefined ) { 
+          
+          return await responseUtils.basicAuthChallenge(response);        
+          
+       } 
+
+       if (userData == null) {
+        return await responseUtils.notFound(response);
+    } 
+
+    if (requestSender.role.toUpperCase() === 'CUSTOMER') {
+
+>>>>>>> main
+
+      return await responseUtils.forbidden(response);  
+    } 
+
+        if (requestSender.role.toUpperCase()=== 'ADMIN') {
+        return await responseUtils.sendJson(response, userData, 200);
+          
+      }  
+       
+      } 
+    
+    // PUT == update the existing user in the filePath with the user requested
+     if (method.toUpperCase() === 'PUT') {
+          // update user   
+         
+          if (requestSender === null || requestSender === undefined) { 
+            return await responseUtils.basicAuthChallenge(response);         
+          } 
+         if (userData == null) {
+          return await responseUtils.notFound(response);
+      } 
+            
+      if (requestSender.role.toUpperCase()=== 'ADMIN') {             
+          const body = await parseBodyJson(request);
+          console.log(body);
+                       
+          if (body.role && (body.role==='admin' || body.role==='customer'))
+          {
+            userData.role = body.role;
+            return await responseUtils.sendJson(response, userData, 200);
+          } else {
+            return responseUtils.badRequest(response, 'Role is missing');         
+           }         
+                 
+      }       
+   
+        if (requestSender.role.toUpperCase() === 'CUSTOMER') {
+          return await responseUtils.forbidden(response);  
+        }        
+        
+      }
+
+<<<<<<< HEAD
     // delete a single user
     //console.log(body._id);
     //console.log(deleteUserById(body._id));
@@ -150,8 +218,32 @@ const handleRequest = async(request, response) => {
     
     //return deleteUserById(body._id);
    }  
+=======
+      if (method.toUpperCase() === 'DELETE') {
 
+        if (requestSender === null || requestSender === undefined) { 
+>>>>>>> main
+
+          return await responseUtils.basicAuthChallenge(response);         
+          
+       } 
+       if (userData == null) {
+        return await responseUtils.notFound(response);
+    } 
+       
+       if (requestSender.role.toUpperCase() === 'CUSTOMER') {
+
+        return await responseUtils.forbidden(response);  
+      } 
+      
+      if (requestSender.role.toUpperCase()=== 'ADMIN') {
+                      
+        return deleteUserById(id);
+    }     
+          
+    }
   }
+
 
   // Default to 404 Not Found if unknown url
   if (!(filePath in allowedMethods)) return responseUtils.notFound(response);

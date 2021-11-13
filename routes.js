@@ -153,8 +153,10 @@ const handleRequest = async(request, response) => {
       } 
       
       if (requestSender.role.toUpperCase()=== 'ADMIN') {
-                      
-        return deleteUserById(id);
+
+        deleteUserById(id);
+                              
+        return await responseUtils.sendJson(response, userData, 200);
     }     
           
     }

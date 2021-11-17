@@ -88,7 +88,7 @@ const handleRequest = async(request, response) => {
           
        } 
 
-       if (userData == null) {
+       if (userData === null) {
         return await responseUtils.notFound(response);
     } 
 
@@ -112,7 +112,7 @@ const handleRequest = async(request, response) => {
           if (requestSender === null || requestSender === undefined) { 
             return await responseUtils.basicAuthChallenge(response);         
           } 
-         if (userData == null) {
+         if (userData === null) {
           return await responseUtils.notFound(response);
       } 
             
@@ -143,7 +143,7 @@ const handleRequest = async(request, response) => {
           return await responseUtils.basicAuthChallenge(response);         
           
        } 
-       if (userData == null) {
+       if (userData === null) {
         return await responseUtils.notFound(response);
     } 
        

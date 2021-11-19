@@ -25,7 +25,7 @@ const updateProductAmount = productId => {
   // - change the amount of products shown in the right element's innerText
   const amount = getProductCountFromCart(productId);
   let productAmount = document.getElementById("amount-"+productId);
-  productAmount.innerText = amount;
+  productAmount.innerText = amount +"x";
 };
 
 const placeOrder = async() => {
@@ -93,10 +93,10 @@ const placeOrder = async() => {
         amount.innerText = getProductCountFromCart(item._id).toString() +"x";
 
         let buttons = productTemplate.querySelectorAll(".cart-minus-plus-button");
-        buttons[0].id = "plus" + item._id;
+        buttons[0].id = "plus-" + item._id;
         buttons[0].addEventListener('click', () => addToCart(item._id));
 
-        buttons[1].id = "minus" + item._id;
+        buttons[1].id = "minus-" + item._id;
         buttons[1].addEventListener('click', () => decreaseCount(item._id));
         cartContainer.appendChild(productTemplate);
       }

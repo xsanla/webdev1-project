@@ -46,7 +46,8 @@ const addToCart = (productId, productName) => {
     addCartButton.addEventListener('click', function(e){
       // Asummes the id is in the same format as in products.json file!!
       const id = e.target.id.split('-');
-      addToCart(id[1], productName.innerText);
+      console.log(id[3]);
+      addToCart(id[3], productName.innerText);
     });
     productCont.appendChild(productTemplate);
   });

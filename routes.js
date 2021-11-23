@@ -13,7 +13,8 @@ const utils = require('./public/js/utils.js');
  */
 const allowedMethods = {
   '/api/register': ['POST'],
-  '/api/users': ['GET']
+  '/api/users': ['GET'],
+  '/api/products': ['GET']
 };
 
 /**
@@ -88,7 +89,7 @@ const handleRequest = async(request, response) => {
           
        } 
 
-       if (userData === null) {
+       if (userData == null) {
         return await responseUtils.notFound(response);
     } 
 
@@ -103,7 +104,7 @@ const handleRequest = async(request, response) => {
           
       }  
        
-      } 
+    } 
     
     // PUT == update the existing user in the filePath with the user requested
      if (method.toUpperCase() === 'PUT') {
@@ -112,13 +113,13 @@ const handleRequest = async(request, response) => {
           if (requestSender === null || requestSender === undefined) { 
             return await responseUtils.basicAuthChallenge(response);         
           } 
-         if (userData === null) {
+         if (userData == null) {
           return await responseUtils.notFound(response);
       } 
             
       if (requestSender.role.toUpperCase()=== 'ADMIN') {             
           const body = await parseBodyJson(request);
-          console.log(body);
+          
                        
           if (body.role && (body.role==='admin' || body.role==='customer'))
           {
@@ -143,7 +144,7 @@ const handleRequest = async(request, response) => {
           return await responseUtils.basicAuthChallenge(response);         
           
        } 
-       if (userData === null) {
+       if (userData == null) {
         return await responseUtils.notFound(response);
     } 
        
@@ -192,7 +193,6 @@ const handleRequest = async(request, response) => {
 
 // returns null, undefined or obj     
 const data = await getCurrentUser(request); 
-console.log(data); 
  if (data === null || data === undefined) { 
     return await responseUtils.basicAuthChallenge(response);  
  }  
@@ -228,6 +228,31 @@ console.log(data);
     response.writeHead(201, "201 Created");
     return responseUtils.sendJson(response, createdUser, 201);
   }
+
+
+
+  if (filePath === '/api/products' && method.toUpperCase() === 'GET') {
+
+    const id = filePath.split("/")[3];
+    const requestSender = await getCurrentUser(request);  
+    const userData = getUserById(id);
+
+    if (requestSender === null || requestSender === undefined) { 
+      return await responseUtils.basicAuthChallenge(response);           
+    } 
+
+    if (userData === null) {
+      return await responseUtils.notFound(response);
+    } 
+   
+    if (requestSender.role.toUpperCase() === 'CUSTOMER' ||requestSender.role.toUpperCase()=== 'ADMIN') {
+      const data = {
+        products: require('./products.json')
+      };
+      return await responseUtils.sendJson(response, data.products, 200);
+    }
+  }
+  
 };
 
 module.exports = { handleRequest };

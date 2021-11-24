@@ -30,7 +30,7 @@ const userSchema = new Schema({
   // set type
   // and the following validators:
   // required, trim, minlength, maxlength 
-  name: {
+  name: { type: String, required: true, minlength: 1, maxlength: 50, trim: true 
 
   },
   // for 'email'
@@ -42,7 +42,7 @@ const userSchema = new Schema({
   // for checking the email you can use the match() from SCHEMA_DEFAULTS
 
   //       
-  email: {
+  email: { type: String, required: true, unique: true, trim: true, match: /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/
 
   },
   // for 'password'
@@ -55,16 +55,35 @@ const userSchema = new Schema({
   //   return bcrypt.hashSync(ENTER PARAMETERS);
   // }
   // 
-  password: {
 
-  },
+  password: { 
+    type: String,
+    required: true,
+    minlength: SCHEMA_DEFAULTS.password.minLength, 
+    set: password => {
+    
+      if (password.minlength<10 && password.required!=true && password.type!=String) {
+        return password;    
+       }   else {
+     return bcrypt.hashSync(password, SALT_ROUNDS); 
+      }
+  }
+},
+
+  
   // for 'role'
   // set type
   // and the following validators:
   //  required, trim, lowercase, enum,    default
   role: {
-
+    type: String,
+    required: true,
+    trim: true,
+    lowercase: true,
+    enum: ['admin', 'customer'],
+    default: 'customer'
   }
+
 });
 
 /**
@@ -81,7 +100,7 @@ userSchema.methods.checkPassword = async function(password) {
   //    - use BCrypt's compare() function. For its paramteres give:
   //      - password as given as parameter to the call to this method
   //      - the password of the user from the User model (this.password)[(this is one of the few places where we need to use 'this'].
-
+return await bcrypt.compare(password, this.password, );
 };
 
 // Omit the version key when serialized to JSON

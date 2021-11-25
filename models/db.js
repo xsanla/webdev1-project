@@ -12,6 +12,7 @@ const getDbUrl = () => {
   // TODO: 9.4 Implement this
  
   require('dotenv').config(); 
+  require('dotenv').config({ path: `/.env` });
   return process.env.DBURL;
 };
 

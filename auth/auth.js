@@ -1,6 +1,7 @@
 
 const requestUtils = require('../utils/requestUtils');
-const users = require('../utils/users');
+const User = require('../models/user');
+//const users = require('../utils/users');
 
 /**
  * Get current user based on the request headers
@@ -18,17 +19,20 @@ const getCurrentUser = async request => {
    //throw new Error('Not Implemented');   
 
   const arrayCredentials = requestUtils.getCredentials(request);
-  //console.log(arrayCredentials);
-  if (arrayCredentials!==null) {
-  const email = arrayCredentials[0];
-  const password = arrayCredentials[1]; 
-  //console.log(users.getUser(email, password));
-  return await users.getUser(email, password);   
+  const emailUser = arrayCredentials[0];
+  const passwordUser = arrayCredentials[1]; 
 
-  } else {    
-    return arrayCredentials; 
-  }
- 
+  //console.log(arrayCredentials);
+  if (arrayCredentials) {
+
+   const user = await User.findOne({email: emailUser}).exec();
+   if (user) {
+     return await User.checkPassword(arrayCredentials[1]==passwordUser) ? user : null;
+       } 
+         
+   }
+  
+ return null; 
 };
 
 module.exports = { getCurrentUser };

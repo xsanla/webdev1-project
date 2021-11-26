@@ -11,8 +11,9 @@ const mongoose = require('mongoose');
 const getDbUrl = () => {
   // TODO: 9.4 Implement this
  
-  require('dotenv').config(); 
-  require('dotenv').config({ path: `/.env` });
+  if (process.env.DBURL === undefined) {
+   return 'mongodb://localhost:27017/WebShopDb';
+  } 
   return process.env.DBURL;
 };
 

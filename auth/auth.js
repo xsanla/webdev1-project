@@ -19,20 +19,21 @@ const getCurrentUser = async request => {
    //throw new Error('Not Implemented');   
 
   const arrayCredentials = requestUtils.getCredentials(request);
+  
   const emailUser = arrayCredentials[0];
   const passwordUser = arrayCredentials[1]; 
-
-  //console.log(arrayCredentials);
+  
+  
   if (arrayCredentials) {
 
-   const user = await User.findOne({email: emailUser}).exec();
-   if (user) {
-     return await User.checkPassword(arrayCredentials[1]==passwordUser) ? user : null;
-       } 
-         
-   }
+  const user = await User.findOne({email: emailUser}).exec();
   
- return null; 
+    if (user){
+    
+    return await user.checkPassword(passwordUser)? user : null;
+    }
+  }
+  return arrayCredentials; 
 };
 
 module.exports = { getCurrentUser };

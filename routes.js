@@ -4,7 +4,7 @@ const { renderPublic } = require('./utils/render');
 const { emailInUse, getAllUsers, saveNewUser, validateUser, deleteUserById, updateUserRole, getUserById} = require('./utils/users');
 const { getCurrentUser } = require('./auth/auth');
 const utils = require('./public/js/utils.js');
-
+const User = require('./models/user');
 /**
  * Known API routes and their allowed methods
  *
@@ -75,32 +75,35 @@ const handleRequest = async(request, response) => {
     // You can use parseBodyJson(request) from utils/requestUtils.js to parse request body
     //throw new Error('Not Implemented');
     //const userCredentials =  getCredentials(request);
+
+    const authHeader = request.headers.authorization;
+        if(authHeader === null || authHeader === undefined){
+          return await responseUtils.basicAuthChallenge(response);
+        }
+    const user = await getCurrentUser(request);  
+    
     const id = filePath.split("/")[3];
-    const requestSender = await getCurrentUser(request);  
-    const userData = getUserById(id);
 
    if (method.toUpperCase() === 'GET') {
         // view a single user
-        //const data = await getCurrentUser(request);   
-
-       if (requestSender === null || requestSender === undefined ) { 
+        //const data = await getCurrentUser(request);  
+        
+        if (user === null || user === undefined) { 
           
           return await responseUtils.basicAuthChallenge(response);        
+          } 
           
-       } 
-
-       if (userData == null) {
-        return await responseUtils.notFound(response);
-    } 
-
-    if (requestSender.role.toUpperCase() === 'CUSTOMER') {
+       
+       
+       
+    if (user.role.toUpperCase() === 'CUSTOMER') {
 
 
       return await responseUtils.forbidden(response);  
     } 
 
-        if (requestSender.role.toUpperCase()=== 'ADMIN') {
-        return await responseUtils.sendJson(response, userData, 200);
+        if (user.role.toUpperCase()=== 'ADMIN') {
+        return await responseUtils.sendJson(response, user, 200);
           
       }  
        
@@ -110,54 +113,49 @@ const handleRequest = async(request, response) => {
      if (method.toUpperCase() === 'PUT') {
           // update user   
          
-          if (requestSender === null || requestSender === undefined) { 
-            return await responseUtils.basicAuthChallenge(response);         
-          } 
-         if (userData == null) {
-          return await responseUtils.notFound(response);
-      } 
+        if (user === null || user === undefined) { 
+          return await responseUtils.basicAuthChallenge(response);         
+        } 
+         
             
-      if (requestSender.role.toUpperCase()=== 'ADMIN') {             
+        if (user.role.toUpperCase()=== 'ADMIN') {             
           const body = await parseBodyJson(request);
-          
-                       
-          if (body.role && (body.role==='admin' || body.role==='customer'))
-          {
-            userData.role = body.role;
-            return await responseUtils.sendJson(response, userData, 200);
-          } else {
-            return responseUtils.badRequest(response, 'Role is missing');         
-           }         
-                 
+            
+                        
+            if (body.role && (body.role==='admin' || body.role==='customer'))
+            {  
+              const userToUpdate = await User.findOne({_id: id}).exec();
+              userToUpdate.role = body.role;
+			  await userToUpdate.save();
+              return await responseUtils.sendJson(response, userToUpdate, 200);
+            } else {
+              return responseUtils.badRequest(response, 'Role is missing');         
+            }                 
       }       
    
-        if (requestSender.role.toUpperCase() === 'CUSTOMER') {
+        if (user.role.toUpperCase() === 'CUSTOMER') {
           return await responseUtils.forbidden(response);  
-        }        
-        
-      }
+        }          
+    }
 
-      if (method.toUpperCase() === 'DELETE') {
 
-        if (requestSender === null || requestSender === undefined) { 
+    if (method.toUpperCase() === 'DELETE') {
 
-          return await responseUtils.basicAuthChallenge(response);         
-          
-       } 
-       if (userData == null) {
-        return await responseUtils.notFound(response);
-    } 
+    	if (user === null || user === undefined) { 
+        return await responseUtils.basicAuthChallenge(response);            
+      } 
        
-       if (requestSender.role.toUpperCase() === 'CUSTOMER') {
-
+      if (user.role.toUpperCase() === 'CUSTOMER') {
         return await responseUtils.forbidden(response);  
       } 
       
-      if (requestSender.role.toUpperCase()=== 'ADMIN') {
-
-        deleteUserById(id);
-                              
-        return await responseUtils.sendJson(response, userData, 200);
+      if (user.role.toUpperCase()=== 'ADMIN') {
+		const userToDel = await User.findOne({_id: id}).excec();
+		if(userToDel){
+        User.deleteOne({_id: id});
+        return await responseUtils.sendJson(response, userToDel, 200);
+		}
+		return await responseUtils.notFound(response);
     }     
           
     }

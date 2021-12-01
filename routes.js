@@ -3,7 +3,8 @@ const { acceptsJson, isJson, parseBodyJson, getCredentials } = require('./utils/
 const { renderPublic } = require('./utils/render');
 const { emailInUse, getAllUsers, saveNewUser, validateUser, deleteUserById, updateUserRole, getUserById} = require('./utils/users');
 const { getCurrentUser } = require('./auth/auth');
-const utils = require('./public/js/utils.js');
+const controlUser = require('./controllers/users.js');
+const controlProduct = require('./controllers/products.js');
 const User = require('./models/user');
 /**
  * Known API routes and their allowed methods
@@ -88,24 +89,18 @@ const handleRequest = async(request, response) => {
         // view a single user
         //const data = await getCurrentUser(request);  
         
-        if (user === null || user === undefined) { 
-          
+        if (user === null || user === undefined) {   
           return await responseUtils.basicAuthChallenge(response);        
-          } 
+        } 
           
-       
-       
-       
-    if (user.role.toUpperCase() === 'CUSTOMER') {
-
-
-      return await responseUtils.forbidden(response);  
-    } 
+    	if (user.role.toUpperCase() === 'CUSTOMER') {
+    		return await responseUtils.forbidden(response);  
+    	} 
 
         if (user.role.toUpperCase()=== 'ADMIN') {
-        return await responseUtils.sendJson(response, user, 200);
-          
-      }  
+			
+        	await controlUser.viewUser(response, id, user);
+      	}  
        
     } 
     
@@ -117,49 +112,32 @@ const handleRequest = async(request, response) => {
           return await responseUtils.basicAuthChallenge(response);         
         } 
          
-            
-        if (user.role.toUpperCase()=== 'ADMIN') {             
-          const body = await parseBodyJson(request);
-            
-                        
-            if (body.role && (body.role==='admin' || body.role==='customer'))
-            {  
-              const userToUpdate = await User.findOne({_id: id}).exec();
-              userToUpdate.role = body.role;
-			  await userToUpdate.save();
-              return await responseUtils.sendJson(response, userToUpdate, 200);
-            } else {
-              return responseUtils.badRequest(response, 'Role is missing');         
-            }                 
-      }       
-   
         if (user.role.toUpperCase() === 'CUSTOMER') {
-          return await responseUtils.forbidden(response);  
-        }          
+			return await responseUtils.forbidden(response);  
+		}
+
+        if (user.role.toUpperCase()=== 'ADMIN') {             
+			const body = await parseBodyJson(request);
+			await controlUser.updateUser(response, id, user, body);
+      	}        
     }
 
 
     if (method.toUpperCase() === 'DELETE') {
 
     	if (user === null || user === undefined) { 
-        return await responseUtils.basicAuthChallenge(response);            
-      } 
+        	return await responseUtils.basicAuthChallenge(response);            
+        } 
        
-      if (user.role.toUpperCase() === 'CUSTOMER') {
-        return await responseUtils.forbidden(response);  
-      } 
+        if (user.role.toUpperCase() === 'CUSTOMER') {
+        	return await responseUtils.forbidden(response);  
+        } 
       
-      if (user.role.toUpperCase()=== 'ADMIN') {
-		const userToDel = await User.findOne({_id: id}).excec();
-		if(userToDel){
-        User.deleteOne({_id: id});
-        return await responseUtils.sendJson(response, userToDel, 200);
-		}
-		return await responseUtils.notFound(response);
-    }     
-          
+        if (user.role.toUpperCase()=== 'ADMIN') {
+			await controlUser.deleteUser(response, id, user);
+		}            
     }
-  }
+}
 
 
   // Default to 404 Not Found if unknown url
@@ -187,22 +165,31 @@ const handleRequest = async(request, response) => {
     //
     //const users = await getAllUsers(response);
     //responseUtils.sendJson(response, users, code = 200);
- // TODO: 8.5 Add authentication (only allowed to users with role "admin")
+    // TODO: 8.5 Add authentication (only allowed to users with role "admin")
 
-// returns null, undefined or obj     
-const data = await getCurrentUser(request); 
- if (data === null || data === undefined) { 
-    return await responseUtils.basicAuthChallenge(response);  
- }  
-  // if user role is customer   
- if (data.role.toUpperCase() === 'CUSTOMER') { 
-   return await responseUtils.forbidden(response);  
-  } 
-   // if user role is admin  
-  if (data.role.toUpperCase() === 'ADMIN') { 
-    const users = getAllUsers(response);    
-  return await responseUtils.sendJson(response, users, 200);   
- }  
+    // check if auth header empty    
+	const authHeader = request.headers.authorization;
+    if(authHeader === null || authHeader === undefined || authHeader === ''){
+  		return await responseUtils.basicAuthChallenge(response);
+	}
+    // check if auth header properly encoded
+    var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+    if(!base64regex.test(authHeader.split(' ')[1]))
+    {
+    	return await responseUtils.basicAuthChallenge(response);
+    }
+	// get the current user
+    const data = await getCurrentUser(request); 
+    if (data === null || data === undefined) { 
+    	return await responseUtils.basicAuthChallenge(response);  
+    }  
+      // if user role is customer   
+    if (data.role.toUpperCase() === 'CUSTOMER') { 
+    	return await responseUtils.forbidden(response);  
+    } 
+    if (data.role.toUpperCase() === 'ADMIN') {
+		await controlUser.getAllUsers(response);
+    }
 
 } 
 
@@ -217,37 +204,35 @@ const data = await getCurrentUser(request);
     // You can use parseBodyJson(request) method from utils/requestUtils.js to parse request body.
     // 
     const userJson = await parseBodyJson(request);
-    if(emailInUse(userJson.email) || validateUser(userJson).length !== 0)
-    {
-      return responseUtils.badRequest(response, "400 Bad Request");
-    } 
-    userJson.role = 'customer';
-    const createdUser = await saveNewUser(userJson);
-    response.writeHead(201, "201 Created");
-    return responseUtils.sendJson(response, createdUser, 201);
+	
+	await controlUser.registerUser(response, userJson);
   }
 
 
 
   if (filePath === '/api/products' && method.toUpperCase() === 'GET') {
 
-    const id = filePath.split("/")[3];
+	//check if auth header empty
+	const authHeader = request.headers.authorization;
+        if(authHeader === null || authHeader === undefined || authHeader === ''){
+          return await responseUtils.basicAuthChallenge(response);
+        }
+	// check if auth header properly encoded
+	var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+    if(!base64regex.test(authHeader.split(' ')[1]))
+	{
+		return await responseUtils.basicAuthChallenge(response);
+	}
     const requestSender = await getCurrentUser(request);  
-    const userData = getUserById(id);
+    
 
     if (requestSender === null || requestSender === undefined) { 
       return await responseUtils.basicAuthChallenge(response);           
     } 
 
-    if (userData === null) {
-      return await responseUtils.notFound(response);
-    } 
    
     if (requestSender.role.toUpperCase() === 'CUSTOMER' ||requestSender.role.toUpperCase()=== 'ADMIN') {
-      const data = {
-        products: require('./products.json')
-      };
-      return await responseUtils.sendJson(response, data.products, 200);
+		await controlProduct.getAllProducts(response);
     }
   }
   

@@ -19,7 +19,7 @@ const generateRandomString = (len = 9) => {
   return str.substr(0, len);
 };
 
-const shortWaitTime = 200;
+const shortWaitTime = 2000;
 
 // Get users (create copies for test isolation)
 const users = require('../setup/users.json').map(user => ({ ...user }));

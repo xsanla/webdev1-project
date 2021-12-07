@@ -44,18 +44,5 @@
     "dotenv": "^8.2.0",
     "mongodb": "^4.2.0",
     "mongoose": "^5.10.10"
-<<<<<<< HEAD
-  },
-  "directories": {
-    "doc": "docs",
-    "test": "test"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git@course-gitlab.tuni.fi:webdev1-autumn-2021/webdev1-group24.git"
-  },
-  "description": ""
-=======
   }
->>>>>>> course-upstream/assignment
 }

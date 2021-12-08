@@ -10,30 +10,42 @@ const User = require('../models/user');
  * @returns {Object|null} current authenticated user or null if not yet authenticated
  */
 const getCurrentUser = async request => {  
-  // TODO: 8.5 Implement getting current user based on the "Authorization" request header
+	// TODO: 8.5 Implement getting current user based on the "Authorization" request header
 
-  // NOTE: You can use getCredentials(request) function from utils/requestUtils.js
-  // and getUser(email, password) function from utils/users.js to get the currently
-  // logged in user
+	// NOTE: You can use getCredentials(request) function from utils/requestUtils.js
+	// and getUser(email, password) function from utils/users.js to get the currently
+	// logged in user
 
-   //throw new Error('Not Implemented');   
+	//throw new Error('Not Implemented');   
 
-  const arrayCredentials = requestUtils.getCredentials(request);
-  
-  const emailUser = arrayCredentials[0];
-  const passwordUser = arrayCredentials[1]; 
-  
-  
-  if (arrayCredentials) {
+	//check if auth header empty
+	const authHeader = request.headers.authorization;
+	if(authHeader === null || authHeader === undefined || authHeader === ''){
+		return null;
+	}
 
-  const user = await User.findOne({email: emailUser}).exec();
-  
-    if (user){
-    
-    return await user.checkPassword(passwordUser)? user : null;
-    }
-  }
-  return arrayCredentials; 
-};
+	// check if authheader type is basic
+    if(authHeader.split(' ')[0] !="Basic")
+	{
+		return null;
+	}
 
-module.exports = { getCurrentUser };
+	const arrayCredentials = requestUtils.getCredentials(request);
+	
+	const emailUser = arrayCredentials[0];
+	const passwordUser = arrayCredentials[1]; 
+	
+	
+	if (arrayCredentials) {
+
+		const user = await User.findOne({email: emailUser}).exec();
+	
+		if (user){
+		
+		return await user.checkPassword(passwordUser)? user : null;
+		}
+	}
+	return null; 
+	};
+
+	module.exports = { getCurrentUser };

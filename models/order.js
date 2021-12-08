@@ -19,6 +19,20 @@ const SCHEMA_DEFAULTS = {
     }
 };
 
+const orderItemSchema = new Schema({
+
+  product: { 
+      _id: { type : String, required: true},
+      name: { type : String, required: true},
+      price: { type: Number, required: true, min:0},
+      description: {type : String}
+  },
+  
+  quantity: { type: Number, min: 0 
+  }
+
+
+});
 const orderSchema = new Schema({
 
 
@@ -30,21 +44,8 @@ const orderSchema = new Schema({
     }
 });
 
-const orderItemSchema = new Schema({
-
-    product: { 
-        _id: { type : String, required: true},
-        name: { type : String, required: true},
-        price: { type: Number, required: true, min:0},
-        description: {type : String}
-    },
-    
-    quantity: { type: Number, min: 0 
-    }
 
 
-});
-
-const OrderItem = newMongoose.model('orderItem', orderItemSchema);
+const OrderItem = new mongoose.model('orderItem', orderItemSchema);
 const Order = new mongoose.model('order', orderSchema);
 module.exports = Order;

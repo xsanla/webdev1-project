@@ -15,7 +15,8 @@ const User = require('./models/user');
 const allowedMethods = {
   '/api/register': ['POST'],
   '/api/users': ['GET'],
-  '/api/products': ['GET', 'POST']
+  '/api/products': ['GET', 'POST'],
+  '/api/products/{id}': ['GET', 'POST']
 };
 
 /**
@@ -60,6 +61,14 @@ const matchIdRoute = (url, prefix) => {
 const matchUserId = url => {
   return matchIdRoute(url, 'users');
 };
+// /**
+//  * Does the URL match /api/products/{id}
+//  * @param {string} url filePath
+//  * @returns {boolean}
+//  */
+// const matchProductId =  url => {
+// 	return matchIdRoute(url, 'products');
+// };
 
 const handleRequest = async(request, response) => {
   const { url, method, headers } = request;
@@ -103,7 +112,7 @@ const handleRequest = async(request, response) => {
 
         if (user.role.toUpperCase()=== 'ADMIN') {
 			
-        	await controlUser.viewUser(response, id, user);
+        	return await controlUser.viewUser(response, id, user);
       	}  
        
     } 
@@ -122,7 +131,7 @@ const handleRequest = async(request, response) => {
 
         if (user.role.toUpperCase()=== 'ADMIN') {             
 			const body = await parseBodyJson(request);
-			await controlUser.updateUser(response, id, user, body);
+			return await controlUser.updateUser(response, id, user, body);
       	}        
     }
 
@@ -138,64 +147,63 @@ const handleRequest = async(request, response) => {
         } 
       
         if (user.role.toUpperCase()=== 'ADMIN') {
-			await controlUser.deleteUser(response, id, user);
+			return await controlUser.deleteUser(response, id, user);
 		}            
     }
 }
 
-
+	console.log("boii");
   // Default to 404 Not Found if unknown url
   if (!(filePath in allowedMethods)) return responseUtils.notFound(response);
-
+	console.log("boii2");
   // See: http://restcookbook.com/HTTP%20Methods/options/
   if (method.toUpperCase() === 'OPTIONS') return sendOptions(filePath, response);
-
+  console.log("boii3");
   // Check for allowable methods
   if (!allowedMethods[filePath].includes(method.toUpperCase())) {
     return responseUtils.methodNotAllowed(response);
   }       
-
+  console.log("boii4");
   // Require a correct accept header (require 'application/json' or '*/*')
   if (!acceptsJson(request)) {
     return responseUtils.contentTypeNotAcceptable(response);
   }   
-
+  console.log("boii5");
   // GET all users
-  if (filePath === '/api/users' && method.toUpperCase() === 'GET') {
-    // TODO 8.4 Replace the current code in this function.
-    // First call getAllUsers() function to fetch the list of users.
-    // Then you can use the sendJson(response, payload, code = 200) from 
-    // ./utils/responseUtils.js to send the response in JSON format.
-    //
-    //const users = await getAllUsers(response);
-    //responseUtils.sendJson(response, users, code = 200);
-    // TODO: 8.5 Add authentication (only allowed to users with role "admin")
+  	if (filePath === '/api/users' && method.toUpperCase() === 'GET') {
+		// TODO 8.4 Replace the current code in this function.
+		// First call getAllUsers() function to fetch the list of users.
+		// Then you can use the sendJson(response, payload, code = 200) from 
+		// ./utils/responseUtils.js to send the response in JSON format.
+		//
+		//const users = await getAllUsers(response);
+		//responseUtils.sendJson(response, users, code = 200);
+		// TODO: 8.5 Add authentication (only allowed to users with role "admin")
 
-    // check if auth header empty    
-	const authHeader = request.headers.authorization;
-    if(authHeader === null || authHeader === undefined || authHeader === ''){
-  		return await responseUtils.basicAuthChallenge(response);
-	}
-    // check if auth header properly encoded
-    var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
-    if(!base64regex.test(authHeader.split(' ')[1]))
-    {
-    	return await responseUtils.basicAuthChallenge(response);
-    }
-	// get the current user
-    const data = await getCurrentUser(request); 
-    if (data === null || data === undefined) { 
-    	return await responseUtils.basicAuthChallenge(response);  
-    }  
-      // if user role is customer   
-    if (data.role.toUpperCase() === 'CUSTOMER') { 
-    	return await responseUtils.forbidden(response);  
-    } 
-    if (data.role.toUpperCase() === 'ADMIN') {
-		await controlUser.getAllUsers(response);
-    }
-
-} 
+		// check if auth header empty    
+		const authHeader = request.headers.authorization;
+		if(authHeader === null || authHeader === undefined || authHeader === ''){
+			return await responseUtils.basicAuthChallenge(response);
+		}
+		// check if auth header properly encoded
+		var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+		if(!base64regex.test(authHeader.split(' ')[1]))
+		{
+			return await responseUtils.basicAuthChallenge(response);
+		}
+		// get the current user
+		const data = await getCurrentUser(request); 
+		if (data === null || data === undefined) { 
+			return await responseUtils.basicAuthChallenge(response);  
+		}  
+		// if user role is customer   
+		if (data.role.toUpperCase() === 'CUSTOMER') { 
+			return await responseUtils.forbidden(response);  
+		} 
+		if (data.role.toUpperCase() === 'ADMIN') {
+			await controlUser.getAllUsers(response);
+		}
+	} 
 
   // register new user
   if (filePath === '/api/register' && method.toUpperCase() === 'POST') {
@@ -212,8 +220,38 @@ const handleRequest = async(request, response) => {
 	await controlUser.registerUser(response, userJson);
   }
 
+  const id = filePath.split("/")[3];
+
+  if (filePath.split("/")[2] == "products" && id != null){
+	//check if auth header empty
+	const authHeader = request.headers.authorization;
+	if(authHeader === null || authHeader === undefined || authHeader === ''){
+	  return await responseUtils.basicAuthChallenge(response);
+	}
+
+	// check if auth header properly encoded
+	var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+	if(!base64regex.test(authHeader.split(' ')[1]))
+	{
+		return await responseUtils.basicAuthChallenge(response);
+	}
+	const requestSender = await getCurrentUser(request);  
 
 
+	if (requestSender === null || requestSender === undefined) { 
+	return await responseUtils.basicAuthChallenge(response);           
+	}
+	
+
+	// getting a single product
+	if(method.toUpperCase() === 'GET'){
+		if (requestSender.role.toUpperCase() === 'CUSTOMER' ||requestSender.role.toUpperCase()=== 'ADMIN') {
+			await controlProduct.getSingleProduct(response, id);
+		}
+	}
+  }
+
+  // getting all products
   if (filePath === '/api/products' && method.toUpperCase() === 'GET') {
 
 	//check if auth header empty
@@ -221,6 +259,7 @@ const handleRequest = async(request, response) => {
         if(authHeader === null || authHeader === undefined || authHeader === ''){
           return await responseUtils.basicAuthChallenge(response);
         }
+
 	// check if auth header properly encoded
 	var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
     if(!base64regex.test(authHeader.split(' ')[1]))
@@ -234,7 +273,7 @@ const handleRequest = async(request, response) => {
       return await responseUtils.basicAuthChallenge(response);           
     } 
 
-   
+	
     if (requestSender.role.toUpperCase() === 'CUSTOMER' ||requestSender.role.toUpperCase()=== 'ADMIN') {
 		await controlProduct.getAllProducts(response);
     }

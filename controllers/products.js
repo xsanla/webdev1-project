@@ -13,6 +13,19 @@ const getAllProducts = async response => {
 /**
  * 
  * @param {*} response 
+ * @param {*} productId 
+ */
+const getSingleProduct = async (response, productId) => {
+	const data = await Product.findOne({_id: productId}).exec();
+	
+	if(data == null){
+		return await responseUtils.notFound(response);
+	}
+	return await responseUtils.sendJson(response, data, 200);
+}
+/**
+ * 
+ * @param {*} response 
  * @param {*} productData 
  */
 const addProduct = async (response, productData) => {
@@ -26,4 +39,4 @@ const addProduct = async (response, productData) => {
 	response.writeHead(201, "201 Created");
 	return await responseUtils.sendJson(response, newProduct, 201);
 };
-module.exports = { getAllProducts, addProduct};
+module.exports = { getAllProducts, getSingleProduct, addProduct};

@@ -103,6 +103,16 @@ userSchema.methods.checkPassword = async function(password) {
 return await bcrypt.compare(password, this.password, );
 };
 
+userSchema.methods.validateEmail = (email) => {
+  return email.match(
+    /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+  );
+};
+
+userSchema.methods.validatePwordLength = (password) => {
+  if(password.length < 10){return false;}
+  return true;
+};
 // Omit the version key when serialized to JSON
 userSchema.set('toJSON', { virtuals: false, versionKey: false });
 

@@ -25,7 +25,7 @@ const getAllUsers = async response => {
  */
 const deleteUser = async(response, userId, currentUser) => {
 	if(userId == currentUser._id){
-		return await responseUtils.badRequest(response);
+		return await responseUtils.badRequest(response,'Deleting own data is not allowed');
 	}
 	const deletedUser = await User.findOneAndDelete({_id: userId}).exec();
 	if(deletedUser){
@@ -45,17 +45,20 @@ const deleteUser = async(response, userId, currentUser) => {
 const updateUser = async(response, userId, currentUser, userData) => {
 	
     if(userId == currentUser._id){
-		return await responseUtils.badRequest(response);
+		return await responseUtils.badRequest(response, 'Updating own data is not allowed');
 	}     
     
 	if (userData.role && (userData.role==='admin' || userData.role==='customer'))
 	{  
-	  const userToUpdate = await User.findById(userId).exec();
-	  userToUpdate.role = userData.role;
-	  await userToUpdate.save();
-	  return await responseUtils.sendJson(response, userToUpdate, 200);
+		const userToUpdate = await User.findById(userId).exec();
+		if(userToUpdate== null){
+			return await responseUtils.notFound(response);
+		}
+	  	userToUpdate.role = userData.role;
+	  	await userToUpdate.save();
+	  	return await responseUtils.sendJson(response, userToUpdate, 200);
 	} else {
-	  return responseUtils.badRequest(response, 'Role is missing');         
+		return await responseUtils.badRequest(response, 'Role is missing');         
 	}              
 };
 
@@ -68,6 +71,10 @@ const updateUser = async(response, userId, currentUser, userData) => {
  */
 const viewUser = async(response, userId, currentUser) => {
 	const userToFind = await User.findOne({_id: userId}).exec();
+	if(userToFind == null){
+		
+		return await responseUtils.notFound(response);
+	}
 	return await responseUtils.sendJson(response, userToFind, 200);
 };
 
@@ -87,8 +94,15 @@ const registerUser = async(response, userData) => {
       return await responseUtils.badRequest(response, "400 Bad Request");
     } 
     userData.role = 'customer';
+	
     
 	const newUser = new User(userData);
+	if(!(newUser.validateEmail(userEmail))){
+		return await responseUtils.badRequest(response);
+	}
+	if(!(newUser.validatePwordLength(pword))){
+		return await responseUtils.badRequest(response);
+	}
 	await newUser.save();
     response.writeHead(201, "201 Created");
     return await responseUtils.sendJson(response, newUser, 201);

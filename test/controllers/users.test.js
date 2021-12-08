@@ -95,6 +95,7 @@ describe('Users Controller', () => {
 
     it('should respond with "400 Bad Request" when userId === currentUser.id', async () => {
       const userId = currentUser.id;
+
       const role = currentUser.role;
       const expectedData = {
         error: 'Updating own data is not allowed'

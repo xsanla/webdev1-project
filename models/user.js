@@ -59,10 +59,10 @@ const userSchema = new Schema({
   password: { 
     type: String,
     required: true,
-    minlength: SCHEMA_DEFAULTS.password.minLength, 
+    minLength: 10,
     set: password => {
     
-      if (!password || (password.minlength<SCHEMA_DEFAULTS.password.minLength && password.type!=String)) {
+      if (!password || (password.length<SCHEMA_DEFAULTS.password.minLength && password.type!=String)) {
         return password;    
        }   else {
      return bcrypt.hashSync(password, SALT_ROUNDS); 

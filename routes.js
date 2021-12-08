@@ -78,11 +78,15 @@ const handleRequest = async(request, response) => {
     //const userCredentials =  getCredentials(request);
 
     const authHeader = request.headers.authorization;
-        if(authHeader === null || authHeader === undefined){
-          return await responseUtils.basicAuthChallenge(response);
-        }
+    if(authHeader === null || authHeader === undefined){
+      return await responseUtils.basicAuthChallenge(response);
+    }
+
+	if (!acceptsJson(request)) {
+		return responseUtils.contentTypeNotAcceptable(response);
+	}
+
     const user = await getCurrentUser(request);  
-    
     const id = filePath.split("/")[3];
 
    if (method.toUpperCase() === 'GET') {

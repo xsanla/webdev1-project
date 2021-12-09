@@ -16,7 +16,7 @@ const allowedMethods = {
   '/api/register': ['POST'],
   '/api/users': ['GET'],
   '/api/products': ['GET', 'POST'],
-  '/api/products/{id}': ['GET', 'POST']
+  '/api/orders': ['GET', 'POST']
 };
 
 /**
@@ -61,14 +61,14 @@ const matchIdRoute = (url, prefix) => {
 const matchUserId = url => {
   return matchIdRoute(url, 'users');
 };
-// /**
-//  * Does the URL match /api/products/{id}
-//  * @param {string} url filePath
-//  * @returns {boolean}
-//  */
-// const matchProductId =  url => {
-// 	return matchIdRoute(url, 'products');
-// };
+/**
+ * Does the URL match /api/products/{id}
+ * @param {string} url filePath
+ * @returns {boolean}
+ */
+const matchProductId =  url => {
+	return matchIdRoute(url, 'products');
+};
 
 const handleRequest = async(request, response) => {
   const { url, method, headers } = request;
@@ -152,23 +152,80 @@ const handleRequest = async(request, response) => {
     }
 }
 
-	console.log("boii");
-  // Default to 404 Not Found if unknown url
-  if (!(filePath in allowedMethods)) return responseUtils.notFound(response);
-	console.log("boii2");
-  // See: http://restcookbook.com/HTTP%20Methods/options/
-  if (method.toUpperCase() === 'OPTIONS') return sendOptions(filePath, response);
-  console.log("boii3");
-  // Check for allowable methods
-  if (!allowedMethods[filePath].includes(method.toUpperCase())) {
-    return responseUtils.methodNotAllowed(response);
-  }       
-  console.log("boii4");
-  // Require a correct accept header (require 'application/json' or '*/*')
-  if (!acceptsJson(request)) {
-    return responseUtils.contentTypeNotAcceptable(response);
-  }   
-  console.log("boii5");
+
+
+	
+	if (matchProductId(filePath)){
+		//check if auth header empty
+		const authHeader = request.headers.authorization;
+		if(authHeader === null || authHeader === undefined || authHeader === ''){
+			return await responseUtils.basicAuthChallenge(response);
+		}
+
+		// Require a correct accept header (require 'application/json' or '*/*')
+		if (!acceptsJson(request)) {
+			return responseUtils.contentTypeNotAcceptable(response);
+		}   
+		
+		// check if auth header properly encoded
+		var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+		if(!base64regex.test(authHeader.split(' ')[1])){
+			return await responseUtils.basicAuthChallenge(response);
+		}
+		const requestSender = await getCurrentUser(request);  
+
+
+		if (requestSender === null || requestSender === undefined) { 
+		return await responseUtils.basicAuthChallenge(response);           
+		}
+		
+		const id = filePath.split("/")[3];
+		// getting a single product
+		if(method.toUpperCase() === 'GET'){
+			if (requestSender.role.toUpperCase() === 'CUSTOMER' ||requestSender.role.toUpperCase()=== 'ADMIN') {
+				return await controlProduct.getSingleProduct(response, id);
+			}
+		}
+
+		if(method.toUpperCase() === 'PUT'){
+			if(requestSender.role.toUpperCase() === 'CUSTOMER') {
+				return await responseUtils.forbidden(response);
+			}
+
+			if(requestSender.role.toUpperCase() === 'ADMIN'){
+				const productJson = await parseBodyJson(request);
+				return await controlProduct.updateProduct(response, productJson, id);
+			}
+		}
+
+		if(method.toUpperCase() === 'DELETE'){
+			if(requestSender.role.toUpperCase() === 'CUSTOMER') {
+				return await responseUtils.forbidden(response);
+			}
+
+			if(requestSender.role.toUpperCase() === 'ADMIN'){
+				return await controlProduct.deleteProduct(response, id);
+			}
+		}
+	}
+
+
+	// Default to 404 Not Found if unknown url
+	if (!(filePath in allowedMethods)) return responseUtils.notFound(response);
+
+	// See: http://restcookbook.com/HTTP%20Methods/options/
+	if (method.toUpperCase() === 'OPTIONS') return sendOptions(filePath, response);
+
+	// Check for allowable methods
+	if (!allowedMethods[filePath].includes(method.toUpperCase())) {
+		return responseUtils.methodNotAllowed(response);
+	}       
+	// Require a correct accept header (require 'application/json' or '*/*')
+	if (!acceptsJson(request)) {
+		return responseUtils.contentTypeNotAcceptable(response);
+	}   
+
+
   // GET all users
   	if (filePath === '/api/users' && method.toUpperCase() === 'GET') {
 		// TODO 8.4 Replace the current code in this function.
@@ -220,36 +277,7 @@ const handleRequest = async(request, response) => {
 	await controlUser.registerUser(response, userJson);
   }
 
-  const id = filePath.split("/")[3];
 
-  if (filePath.split("/")[2] == "products" && id != null){
-	//check if auth header empty
-	const authHeader = request.headers.authorization;
-	if(authHeader === null || authHeader === undefined || authHeader === ''){
-	  return await responseUtils.basicAuthChallenge(response);
-	}
-
-	// check if auth header properly encoded
-	var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
-	if(!base64regex.test(authHeader.split(' ')[1]))
-	{
-		return await responseUtils.basicAuthChallenge(response);
-	}
-	const requestSender = await getCurrentUser(request);  
-
-
-	if (requestSender === null || requestSender === undefined) { 
-	return await responseUtils.basicAuthChallenge(response);           
-	}
-	
-
-	// getting a single product
-	if(method.toUpperCase() === 'GET'){
-		if (requestSender.role.toUpperCase() === 'CUSTOMER' ||requestSender.role.toUpperCase()=== 'ADMIN') {
-			await controlProduct.getSingleProduct(response, id);
-		}
-	}
-  }
 
   // getting all products
   if (filePath === '/api/products' && method.toUpperCase() === 'GET') {
@@ -310,6 +338,34 @@ const handleRequest = async(request, response) => {
 	}
     if (requestSender.role.toUpperCase()=== 'ADMIN') {
 		await controlProduct.addProduct(response, productJson);
+    }
+  }
+
+  //Getting all orders
+  if (filePath === '/api/orders' && method.toUpperCase() === 'GET') {
+
+	//check if auth header empty
+	const authHeader = request.headers.authorization;
+        if(authHeader === null || authHeader === undefined || authHeader === ''){
+          return await responseUtils.basicAuthChallenge(response);
+        }
+
+	// check if auth header properly encoded
+	var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+    if(!base64regex.test(authHeader.split(' ')[1]))
+	{
+		return await responseUtils.basicAuthChallenge(response);
+	}
+    const requestSender = await getCurrentUser(request);  
+    
+
+    if (requestSender === null || requestSender === undefined) { 
+      return await responseUtils.basicAuthChallenge(response);           
+    } 
+
+	
+    if (requestSender.role.toUpperCase() === 'CUSTOMER' ||requestSender.role.toUpperCase()=== 'ADMIN') {
+		await controlProduct.getAllProducts(response);
     }
   }
   

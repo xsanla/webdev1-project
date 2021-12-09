@@ -1,23 +1,7 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-const SCHEMA_DEFAULTS = {
-    name: {
-      minLength: 1,
-      maxLength: 50
-    },
-    email: {
-      // https://stackoverflow.com/questions/46155/how-to-validate-an-email-address-in-javascript
-      match: /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/
-    },
-    password: {
-      minLength: 10
-    },
-    role: {
-      values: ['admin', 'customer'],
-      defaultValue: 'customer'
-    }
-};
+
 
 const orderItemSchema = new Schema({
 
@@ -28,7 +12,7 @@ const orderItemSchema = new Schema({
       description: {type : String}
   },
   
-  quantity: { type: Number, min: 0 
+  quantity: { type: Number, min: 1
   }
 
 
@@ -45,7 +29,7 @@ const orderSchema = new Schema({
 });
 
 
-
+orderSchema.set('toJSON', { virtuals: false, versionKey: false });
 const OrderItem = new mongoose.model('orderItem', orderItemSchema);
 const Order = new mongoose.model('order', orderSchema);
 module.exports = Order;

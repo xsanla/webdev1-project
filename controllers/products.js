@@ -28,6 +28,44 @@ const getSingleProduct = async (response, productId) => {
  * @param {*} response 
  * @param {*} productData 
  */
+const updateProduct = async (response, productData, productId) =>{
+	if(productData.price == null||productData.name == null||isNaN(productData.price)||productData.price <= 0)
+	{
+		return await responseUtils.badRequest(response, "400 Bad Request");
+	}
+
+	const productToUpdate = await Product.findOne({_id: productId}).exec();
+	if(productToUpdate == null){
+		return await responseUtils.notFound(response);
+	}
+
+	for (var key of Object.keys(productData)) {
+		if(productData[key] != null){
+			productToUpdate[key] = productData[key];
+		}
+	}
+	await productToUpdate.save();
+	return await responseUtils.sendJson(response, productToUpdate, 200);
+
+}
+/**
+ * 
+ * @param {*} response 
+ * @param {*} productId 
+ * @returns 
+ */
+const deleteProduct = async (response,productId) =>{
+	const deletedProduct = await Product.findOneAndDelete({_id: productId}).exec();
+	if(deletedProduct){
+		return await responseUtils.sendJson(response, deletedProduct, 200);	
+	}
+	return await responseUtils.notFound(response);
+}
+/**
+ * 
+ * @param {*} response 
+ * @param {*} productData 
+ */
 const addProduct = async (response, productData) => {
 	if(productData.price == null || productData.name == null)
 	{
@@ -39,4 +77,4 @@ const addProduct = async (response, productData) => {
 	response.writeHead(201, "201 Created");
 	return await responseUtils.sendJson(response, newProduct, 201);
 };
-module.exports = { getAllProducts, getSingleProduct, addProduct};
+module.exports = { getAllProducts, getSingleProduct, addProduct, updateProduct, deleteProduct};

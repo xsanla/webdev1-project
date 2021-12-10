@@ -5,6 +5,7 @@ const { emailInUse, getAllUsers, saveNewUser, validateUser, deleteUserById, upda
 const { getCurrentUser } = require('./auth/auth');
 const controlUser = require('./controllers/users.js');
 const controlProduct = require('./controllers/products.js');
+const controlOrder = require('./controllers/orders.js');
 const User = require('./models/user');
 /**
  * Known API routes and their allowed methods
@@ -363,10 +364,47 @@ const handleRequest = async(request, response) => {
       return await responseUtils.basicAuthChallenge(response);           
     } 
 
-	
-    if (requestSender.role.toUpperCase() === 'CUSTOMER' ||requestSender.role.toUpperCase()=== 'ADMIN') {
-		await controlProduct.getAllProducts(response);
+    if (requestSender.role.toUpperCase()=== 'ADMIN') {
+		await controlOrder.getOrderAdmin(response);
     }
+
+	if (requestSender.role.toUpperCase()=== 'CUSTOMER') {
+		await controlOrder.getOrderCustomer(response, requestSender._id);
+    }
+  }
+
+  // Create a new order
+  if (filePath === '/api/orders' && method.toUpperCase() === 'POST') {
+
+	//check if auth header empty
+	const authHeader = request.headers.authorization;
+    if(authHeader === null || authHeader === undefined || authHeader === ''){
+      return await responseUtils.basicAuthChallenge(response);
+    }
+	if (!isJson(request)) {
+		return responseUtils.badRequest(response, 'Invalid Content-Type. Expected application/json');
+	}
+	// check if auth header properly encoded
+	var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+    if(!base64regex.test(authHeader.split(' ')[1]))
+	{
+		return await responseUtils.basicAuthChallenge(response);
+	}
+    const requestSender = await getCurrentUser(request);  
+    
+
+    if (requestSender === null || requestSender === undefined) { 
+      return await responseUtils.basicAuthChallenge(response);           
+    } 
+
+    if (requestSender.role.toUpperCase()=== 'ADMIN') {
+		return await responseUtils.forbidden(response);
+    }
+
+	if(requestSender.role.toUpperCase()=== 'CUSTOMER'){
+		const orderData = await parseBodyJson(request);
+		await controlOrder.createOrder(response, orderData, requestSender._id);
+	}
   }
   
 };

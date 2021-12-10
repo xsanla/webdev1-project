@@ -118,1305 +118,1305 @@ describe('Routes', () => {
   });
 
   describe('handleRequest()', () => {
-    describe('General Server Functionality', () => {
-      it('should respond with "404 Not Found" to an unknown URI', async () => {
-        for (const url of unknownUrls) {
-          const response = await chai.request(handleRequest).get(url);
-          expect(response).to.have.status(404);
-        }
-      });
-
-      it('should respond with HTML file when "/register.html" is requested', async () => {
-        const response = await chai.request(handleRequest).get('/register.html');
-        expect(response).to.have.status(200);
-        expect(response).to.be.html;
-      });
-
-      it('should respond with "405 Method Not Allowed" to an unsupported method', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .post(usersUrl)
-          .set('Accept', contentType)
-          .send({});
-        expect(response).to.have.status(405);
-      });
-
-      it('should respond with "204 No Content" to an OPTIONS request', async () => {
-        const response = await chai.request(handleRequest).options(usersUrl);
-        expect(response).to.have.status(204);
-      });
-
-      it('should respond with correct Allow headers to an OPTIONS request', async () => {
-        const response = await chai.request(handleRequest).options(usersUrl);
-
-        // Access-Control-Allow-Methods: GET
-        expect(response).to.have.header('access-control-allow-methods', /get/i);
-
-        // Access-Control-Allow-Headers: Content-Type,Accept
-        expect(response).to.have.header('access-control-allow-headers', /content-type,accept/i);
-
-        // Access-Control-Max-Age: 86400
-        expect(response).to.have.header('access-control-max-age', '86400');
-
-        // Access-Control-Expose-Headers: Content-Type,Accept
-        expect(response).to.have.header('access-control-expose-headers', /content-type,accept/i);
-      });
-    });
-
-    describe('Registration: POST /api/register', () => {
-      it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
-        const user = getTestUser();
-        const response = await chai
-          .request(handleRequest)
-          .post(registrationUrl)
-          .send(user);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
-        const user = getTestUser();
-        const response = await chai
-          .request(handleRequest)
-          .post(registrationUrl)
-          .set('Accept', 'text/html')
-          .send(user);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "400 Bad Request" when request body is not valid JSON', async () => {
-        const body = JSON.stringify(getTestUser()).substring(1);
-        const response = await chai
-          .request(handleRequest)
-          .post(registrationUrl)
-          .set('Accept', contentType)
-          .send(body);
-        expect(response).to.have.status(400);
-      });
-
-      it('should respond with "400 Bad Request" when email is missing', async () => {
-        const user = getTestUser();
-        delete user.email;
-
-        const response = await chai
-          .request(handleRequest)
-          .post(registrationUrl)
-          .set('Accept', contentType)
-          .send(user);
-
-        expect(response).to.have.status(400);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.property('error');
-      });
-
-      it('should respond with "400 Bad Request" when email is already in use', async () => {
-        const user = getTestUser();
-        user.email = adminUser.email;
-
-        const response = await chai
-          .request(handleRequest)
-          .post(registrationUrl)
-          .set('Accept', contentType)
-          .send(user);
-
-        expect(response).to.have.status(400);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.property('error');
-      });
-
-      it('should respond with "400 Bad Request" when name is missing', async () => {
-        const user = getTestUser();
-        delete user.name;
-
-        const response = await chai
-          .request(handleRequest)
-          .post(registrationUrl)
-          .set('Accept', contentType)
-          .send(user);
-
-        expect(response).to.have.status(400);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.property('error');
-      });
-
-      it('should respond with "400 Bad Request" when password is missing', async () => {
-        const user = getTestUser();
-        delete user.password;
-
-        const response = await chai
-          .request(handleRequest)
-          .post(registrationUrl)
-          .set('Accept', contentType)
-          .send(user);
-
-        expect(response).to.have.status(400);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.property('error');
-      });
-
-      it('should respond with "201 Created" when registration is successful', async () => {
-        const user = getTestUser();
-
-        const response = await chai
-          .request(handleRequest)
-          .post(registrationUrl)
-          .set('Accept', contentType)
-          .send(user);
-
-        const createdUser = await User.findOne({ email: user.email }).exec();
-        const { id, name, email, role, password } = createdUser;
-
-        expect(response).to.have.status(201);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.all.keys('_id', 'name', 'email', 'password', 'role');
-        expect(response.body).to.include({ _id: id, name, email, role, password });
-      });
-
-      it('should set user role to "customer" when registration is successful', async () => {
-        const user = getTestUser();
-        user.role = 'admin';
-
-        const response = await chai
-          .request(handleRequest)
-          .post(registrationUrl)
-          .set('Accept', contentType)
-          .send(user);
-
-        const createdUser = await User.findOne({ email: user.email }).exec();
-
-        expect(response).to.have.status(201);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.all.keys('_id', 'name', 'email', 'password', 'role');
-        expect(response.body.role).to.equal('customer');
-        expect(createdUser.role).to.equal('customer');
-      });
-    });
-
-    describe('Viewing all users: GET /api/users', () => {
-      it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
-        const response = await chai.request(handleRequest).get(usersUrl);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(usersUrl)
-          .set('Accept', 'text/html');
-
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(usersUrl)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(usersUrl)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is empty', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(usersUrl)
-          .set('Accept', contentType)
-          .set('Authorization', '');
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is not properly encoded', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(usersUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminUser.email}:${adminUser.password}`);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(usersUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${invalidCredentials}`);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with "403 Forbidden" when customer credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(usersUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${customerCredentials}`);
-
-        expect(response).to.have.status(403);
-      });
-
-      it('should respond with JSON when admin credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(usersUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('array');
-      });
-    });
-
-    describe('Viewing a single user: GET /api/users/{id}', () => {
-      let testUser;
-      let url;
-      let unknownId;
-
-      beforeEach(async () => {
-        const tempUser = users.find(u => u.role === 'admin' && u.email !== adminUser.email);
-        testUser = await User.findOne({ email: tempUser.email }).exec();
-        url = `${usersUrl}/${testUser.id}`;
-        unknownId = testUser.id
-          .split('')
-          .reverse()
-          .join('');
-      });
-
-      it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${invalidCredentials}`);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with "403 Forbidden" when customer credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${customerCredentials}`);
-
-        expect(response).to.have.status(403);
-      });
-
-      it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Authorization', `Basic ${adminCredentials}`);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Accept', 'text/html')
-          .set('Authorization', `Basic ${adminCredentials}`);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with JSON when admin credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.all.keys('_id', 'name', 'email', 'password', 'role');
-      });
-
-      it('should respond with status code 404 when user does not exist', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(`${usersUrl}/${unknownId}`)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        expect(response).to.have.status(404);
-      });
-    });
-
-    describe('Updating users: PUT /api/users/{id}', () => {
-      const user = {
-        role: 'admin'
-      };
-
-      let testUser;
-      let url;
-      let unknownId;
-
-      beforeEach(async () => {
-        const tempUser = users.find(u => u.role === 'customer' && u.email !== customerUser.email);
-        testUser = await User.findOne({ email: tempUser.email }).exec();
-        url = `${usersUrl}/${testUser.id}`;
-        unknownId = testUser.id
-          .split('')
-          .reverse()
-          .join('');
-      });
-
-      it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
-        const response = await chai.request(handleRequest).put(url);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${invalidCredentials}`);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with "403 Forbidden" when customer credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${customerCredentials}`)
-          .send(user);
-
-        expect(response).to.have.status(403);
-      });
-
-      it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(user);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', 'text/html')
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(user);
-        expect(response).to.have.status(406);
-      });
-
-      it('should update role when admin credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(user);
-
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.all.keys('_id', 'name', 'email', 'password', 'role');
-        expect(response.body.role).to.equal('admin');
-      });
-
-      it('should only update role', async () => {
-        const userWithExtra = {
-          _id: generateRandomString(24),
-          ...getTestUser(),
-          role: 'customer'
-        };
-
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(userWithExtra);
-
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.all.keys('_id', 'name', 'email', 'password', 'role');
-        expect(response.body.email).to.equal(testUser.email);
-        expect(response.body.name).to.equal(testUser.name);
-        expect(response.body._id).to.equal(testUser.id);
-        expect(response.body.role).to.equal('customer');
-      });
-
-      it('should respond with "400 Bad Request" when role is missing', async () => {
-        const userWithExtra = {
-          _id: generateRandomString(),
-          ...getTestUser()
-        };
-
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(userWithExtra);
-
-        expect(response).to.have.status(400);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.property('error');
-      });
-
-      it('should respond with "400 Bad Request" when role is not valid', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send({ role: generateRandomString() });
-
-        expect(response).to.have.status(400);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.property('error');
-      });
-
-      it('should respond with status code 404 when user does not exist', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(`${usersUrl}/${unknownId}`)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(user);
-
-        expect(response).to.have.status(404);
-      });
-    });
-
-    describe('Deleting users: DELETE /api/users/{id}', () => {
-      let testUser;
-      let url;
-      let unknownId;
-
-      beforeEach(async () => {
-        const tempUser = users[users.length - 1];
-        testUser = await User.findOne({ email: tempUser.email }).exec();
-        url = `${usersUrl}/${testUser.id}`;
-        unknownId = testUser.id
-          .split('')
-          .reverse()
-          .join('');
-      });
-
-      it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${invalidCredentials}`);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with "403 Forbidden" when customer credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${customerCredentials}`);
-
-        expect(response).to.have.status(403);
-      });
-
-      it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Authorization', `Basic ${adminCredentials}`);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', 'text/html')
-          .set('Authorization', `Basic ${adminCredentials}`);
-        expect(response).to.have.status(406);
-      });
-
-      it('should delete user when admin credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        const dbUsers = await User.find({});
-        expect(response).to.have.status(200);
-        expect(dbUsers).to.be.lengthOf(allUsers.length - 1);
-      });
-
-      it('should return the deleted user', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        const dbUsers = await User.find({});
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(dbUsers).to.be.lengthOf(allUsers.length - 1);
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.all.keys('_id', 'name', 'email', 'password', 'role');
-      });
-
-      it('should respond with status code 404 when user does not exist', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(`${usersUrl}/${unknownId}`)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        expect(response).to.have.status(404);
-      });
-    });
-
-    /**
-     *  Products endpoints
-     */
-    describe('Viewing all products: GET /api/products', () => {
-      it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(productsUrl)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(productsUrl)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${invalidCredentials}`);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is empty', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', '');
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is not properly encoded', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminUser.email}:${adminUser.password}`);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
-        const response = await chai.request(handleRequest).get(productsUrl);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(productsUrl)
-          .set('Accept', 'text/html');
-
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with JSON when admin credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('array');
-      });
-
-      it('should respond with JSON when customer credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${customerCredentials}`);
-
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('array');
-      });
-
-      it('should respond with correct data when admin credentials are received', async () => {
-        const productsData = JSON.parse(JSON.stringify(allProducts));
-        const response = await chai
-          .request(handleRequest)
-          .get(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(response.body).to.be.deep.equal(productsData);
-      });
-
-      it('should respond with correct data when customer credentials are received', async () => {
-        const productsData = JSON.parse(JSON.stringify(allProducts));
-        const response = await chai
-          .request(handleRequest)
-          .get(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${customerCredentials}`);
-
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(response.body).to.be.deep.equal(productsData);
-      });
-    });
-
-    describe('Viewing a single product: GET /api/products/{id}', () => {
-      let testProduct;
-      let url;
-      let unknownId;
-
-      beforeEach(async () => {
-        testProduct = await Product.findOne({}).exec();
-        url = `${productsUrl}/${testProduct.id}`;
-        unknownId = testProduct.id
-          .split('')
-          .reverse()
-          .join('');
-      });
-
-      it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${invalidCredentials}`);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Authorization', `Basic ${adminCredentials}`);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Accept', 'text/html')
-          .set('Authorization', `Basic ${adminCredentials}`);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with JSON when admin credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.all.keys('_id', 'name', 'price', 'description', 'image');
-      });
-
-      it('should respond with JSON when customer credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${customerCredentials}`);
-
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.all.keys('_id', 'name', 'price', 'description', 'image');
-      });
-
-      it('should respond with status code 404 when product does not exist', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .get(`${productsUrl}/${unknownId}`)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        expect(response).to.have.status(404);
-      });
-    });
-
-    describe('Updating products: PUT /api/products/{id}', () => {
-      const product = {
-        name: 'Test Product',
-        price: 45.75,
-        image: 'http://www.google.com/',
-        description: 'A mysterious test product'
-      };
-
-      let testProduct;
-      let url;
-      let unknownId;
-
-      beforeEach(async () => {
-        testProduct = await Product.findOne({}).exec();
-        url = `${productsUrl}/${testProduct.id}`;
-        unknownId = testProduct.id
-          .split('')
-          .reverse()
-          .join('');
-      });
-
-      it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
-        const response = await chai.request(handleRequest).put(url);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${invalidCredentials}`);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with "403 Forbidden" when customer credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${customerCredentials}`)
-          .send(product);
-
-        expect(response).to.have.status(403);
-      });
-
-      it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(product);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', 'text/html')
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(product);
-        expect(response).to.have.status(406);
-      });
-
-      it('should update product when admin credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(product);
-
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.all.keys('_id', 'name', 'description', 'image', 'price');
-        expect(response.body._id).to.equal(testProduct.id);
-        expect(response.body.name).to.equal(product.name);
-        expect(response.body.description).to.equal(product.description);
-        expect(response.body.image).to.equal(product.image);
-        expect(response.body.price).to.equal(product.price);
-      });
-
-      it('should allow partial update of product properties', async () => {
-        const productWithPartialData = { ...product };
-        delete productWithPartialData.description;
-        delete productWithPartialData.image;
-
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(productWithPartialData);
-
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.all.keys('_id', 'name', 'description', 'image', 'price');
-        expect(response.body._id).to.equal(testProduct.id);
-        expect(response.body.description).to.equal(testProduct.description);
-        expect(response.body.image).to.equal(testProduct.image);
-        expect(response.body.name).to.equal(product.name);
-        expect(response.body.price).to.equal(product.price);
-      });
-
-      it('should respond with "400 Bad Request" when name is empty', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send({ name: '' });
-
-        expect(response).to.have.status(400);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.property('error');
-      });
-
-      it('should respond with "400 Bad Request" when price is not a number', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send({ price: generateRandomString() });
-
-        expect(response).to.have.status(400);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.property('error');
-      });
-
-      it('should respond with "400 Bad Request" when price is 0 (zero)', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send({ price: 0 });
-
-        expect(response).to.have.status(400);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.property('error');
-      });
-
-      it('should respond with "400 Bad Request" when price is negative', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send({ price: -2.5 });
-
-        expect(response).to.have.status(400);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.property('error');
-      });
-
-      it('should respond with status code 404 when product does not exist', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .put(`${productsUrl}/${unknownId}`)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(product);
-
-        expect(response).to.have.status(404);
-      });
-    });
-
-    describe('Deleting products: DELETE /api/products/{id}', () => {
-      let testProduct;
-      let url;
-      let unknownId;
-
-      beforeEach(async () => {
-        testProduct = await Product.findOne({}).exec();
-        url = `${productsUrl}/${testProduct.id}`;
-        unknownId = testProduct.id
-          .split('')
-          .reverse()
-          .join('');
-      });
-
-      it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', contentType);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${invalidCredentials}`);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with "403 Forbidden" when customer credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${customerCredentials}`);
-
-        expect(response).to.have.status(403);
-      });
-
-      it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Authorization', `Basic ${adminCredentials}`);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', 'text/html')
-          .set('Authorization', `Basic ${adminCredentials}`);
-        expect(response).to.have.status(406);
-      });
-
-      it('should delete product when admin credentials are received', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        const dbProducts = await Product.find({});
-        expect(response).to.have.status(200);
-        expect(dbProducts).to.be.lengthOf(allProducts.length - 1);
-      });
-
-      it('should return the deleted user', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(url)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        const dbProducts = await Product.find({});
-        expect(response).to.have.status(200);
-        expect(response).to.be.json;
-        expect(dbProducts).to.be.lengthOf(allProducts.length - 1);
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.all.keys('_id', 'name', 'price', 'image', 'description');
-      });
-
-      it('should respond with status code 404 when user does not exist', async () => {
-        const response = await chai
-          .request(handleRequest)
-          .delete(`${productsUrl}/${unknownId}`)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`);
-
-        expect(response).to.have.status(404);
-      });
-    });
-
-    describe('Create a new product: POST /api/products', () => {
-      it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
-        const product = getTestProduct();
-        const response = await chai
-          .request(handleRequest)
-          .post(productsUrl)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(product);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
-        const product = getTestProduct();
-        const response = await chai
-          .request(handleRequest)
-          .post(productsUrl)
-          .set('Accept', 'text/html')
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(product);
-        expect(response).to.have.status(406);
-      });
-
-      it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
-        const product = getTestProduct();
-        const response = await chai
-          .request(handleRequest)
-          .post(productsUrl)
-          .set('Accept', contentType)
-          .send(product);
-
-        expect(response).to.have.status(401);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
-        const product = getTestProduct();
-        const response = await chai
-          .request(handleRequest)
-          .post(productsUrl)
-          .set('Accept', contentType)
-          .send(product);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
-        const product = getTestProduct();
-        const response = await chai
-          .request(handleRequest)
-          .post(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${invalidCredentials}`)
-          .send(product);
-
-        expect(response).to.have.status(401);
-        expect(response).to.have.header('www-authenticate', /basic/i);
-      });
-
-      it('should respond with "403 Forbidden" when customer credentials are received', async () => {
-        const product = getTestProduct();
-        const response = await chai
-          .request(handleRequest)
-          .post(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${customerCredentials}`)
-          .send(product);
-
-        expect(response).to.have.status(403);
-      });
-
-      it('should respond with "400 Bad Request" when request body is not valid JSON', async () => {
-        const body = JSON.stringify(getTestProduct()).substring(1);
-        const response = await chai
-          .request(handleRequest)
-          .post(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(body);
-        expect(response).to.have.status(400);
-      });
-
-      it('should respond with "400 Bad Request" when name is missing', async () => {
-        const product = getTestProduct();
-        delete product.name;
-
-        const response = await chai
-          .request(handleRequest)
-          .post(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(product);
-
-        expect(response).to.have.status(400);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.property('error');
-      });
-
-      it('should respond with "400 Bad Request" when price is missing', async () => {
-        const product = getTestProduct();
-        delete product.price;
-
-        const response = await chai
-          .request(handleRequest)
-          .post(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(product);
-
-        expect(response).to.have.status(400);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.property('error');
-      });
-
-      it('should respond with "201 Created" when product creation is successful', async () => {
-        const product = getTestProduct();
-
-        const response = await chai
-          .request(handleRequest)
-          .post(productsUrl)
-          .set('Accept', contentType)
-          .set('Authorization', `Basic ${adminCredentials}`)
-          .send(product);
-
-        const createdProduct = await Product.findOne({
-          name: product.name,
-          image: product.image
-        }).exec();
-
-        const { name, price, image, description } = createdProduct;
-        expect(response).to.have.status(201);
-        expect(response).to.be.json;
-        expect(response.body).to.be.an('object');
-        expect(response.body).to.have.all.keys('_id', 'name', 'price', 'description', 'image');
-        expect(response.body).to.include({
-          _id: createdProduct.id,
-          name,
-          price,
-          image,
-          description
-        });
-      });
-    });
-
-    /**
-     *  Orders endpoints
-     */
+    // describe('General Server Functionality', () => {
+    //   it('should respond with "404 Not Found" to an unknown URI', async () => {
+    //     for (const url of unknownUrls) {
+    //       const response = await chai.request(handleRequest).get(url);
+    //       expect(response).to.have.status(404);
+    //     }
+    //   });
+
+    //   it('should respond with HTML file when "/register.html" is requested', async () => {
+    //     const response = await chai.request(handleRequest).get('/register.html');
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.html;
+    //   });
+
+    //   it('should respond with "405 Method Not Allowed" to an unsupported method', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(usersUrl)
+    //       .set('Accept', contentType)
+    //       .send({});
+    //     expect(response).to.have.status(405);
+    //   });
+
+    //   it('should respond with "204 No Content" to an OPTIONS request', async () => {
+    //     const response = await chai.request(handleRequest).options(usersUrl);
+    //     expect(response).to.have.status(204);
+    //   });
+
+    //   it('should respond with correct Allow headers to an OPTIONS request', async () => {
+    //     const response = await chai.request(handleRequest).options(usersUrl);
+
+    //     // Access-Control-Allow-Methods: GET
+    //     expect(response).to.have.header('access-control-allow-methods', /get/i);
+
+    //     // Access-Control-Allow-Headers: Content-Type,Accept
+    //     expect(response).to.have.header('access-control-allow-headers', /content-type,accept/i);
+
+    //     // Access-Control-Max-Age: 86400
+    //     expect(response).to.have.header('access-control-max-age', '86400');
+
+    //     // Access-Control-Expose-Headers: Content-Type,Accept
+    //     expect(response).to.have.header('access-control-expose-headers', /content-type,accept/i);
+    //   });
+    // });
+
+    // describe('Registration: POST /api/register', () => {
+    //   it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
+    //     const user = getTestUser();
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(registrationUrl)
+    //       .send(user);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
+    //     const user = getTestUser();
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(registrationUrl)
+    //       .set('Accept', 'text/html')
+    //       .send(user);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "400 Bad Request" when request body is not valid JSON', async () => {
+    //     const body = JSON.stringify(getTestUser()).substring(1);
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(registrationUrl)
+    //       .set('Accept', contentType)
+    //       .send(body);
+    //     expect(response).to.have.status(400);
+    //   });
+
+    //   it('should respond with "400 Bad Request" when email is missing', async () => {
+    //     const user = getTestUser();
+    //     delete user.email;
+
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(registrationUrl)
+    //       .set('Accept', contentType)
+    //       .send(user);
+
+    //     expect(response).to.have.status(400);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.property('error');
+    //   });
+
+    //   it('should respond with "400 Bad Request" when email is already in use', async () => {
+    //     const user = getTestUser();
+    //     user.email = adminUser.email;
+
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(registrationUrl)
+    //       .set('Accept', contentType)
+    //       .send(user);
+
+    //     expect(response).to.have.status(400);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.property('error');
+    //   });
+
+    //   it('should respond with "400 Bad Request" when name is missing', async () => {
+    //     const user = getTestUser();
+    //     delete user.name;
+
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(registrationUrl)
+    //       .set('Accept', contentType)
+    //       .send(user);
+
+    //     expect(response).to.have.status(400);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.property('error');
+    //   });
+
+    //   it('should respond with "400 Bad Request" when password is missing', async () => {
+    //     const user = getTestUser();
+    //     delete user.password;
+
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(registrationUrl)
+    //       .set('Accept', contentType)
+    //       .send(user);
+
+    //     expect(response).to.have.status(400);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.property('error');
+    //   });
+
+    //   it('should respond with "201 Created" when registration is successful', async () => {
+    //     const user = getTestUser();
+
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(registrationUrl)
+    //       .set('Accept', contentType)
+    //       .send(user);
+
+    //     const createdUser = await User.findOne({ email: user.email }).exec();
+    //     const { id, name, email, role, password } = createdUser;
+
+    //     expect(response).to.have.status(201);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.all.keys('_id', 'name', 'email', 'password', 'role');
+    //     expect(response.body).to.include({ _id: id, name, email, role, password });
+    //   });
+
+    //   it('should set user role to "customer" when registration is successful', async () => {
+    //     const user = getTestUser();
+    //     user.role = 'admin';
+
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(registrationUrl)
+    //       .set('Accept', contentType)
+    //       .send(user);
+
+    //     const createdUser = await User.findOne({ email: user.email }).exec();
+
+    //     expect(response).to.have.status(201);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.all.keys('_id', 'name', 'email', 'password', 'role');
+    //     expect(response.body.role).to.equal('customer');
+    //     expect(createdUser.role).to.equal('customer');
+    //   });
+    // });
+
+    // describe('Viewing all users: GET /api/users', () => {
+    //   it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
+    //     const response = await chai.request(handleRequest).get(usersUrl);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(usersUrl)
+    //       .set('Accept', 'text/html');
+
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(usersUrl)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(usersUrl)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is empty', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(usersUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', '');
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is not properly encoded', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(usersUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminUser.email}:${adminUser.password}`);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(usersUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${invalidCredentials}`);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with "403 Forbidden" when customer credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(usersUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${customerCredentials}`);
+
+    //     expect(response).to.have.status(403);
+    //   });
+
+    //   it('should respond with JSON when admin credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(usersUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('array');
+    //   });
+    // });
+
+    // describe('Viewing a single user: GET /api/users/{id}', () => {
+    //   let testUser;
+    //   let url;
+    //   let unknownId;
+
+    //   beforeEach(async () => {
+    //     const tempUser = users.find(u => u.role === 'admin' && u.email !== adminUser.email);
+    //     testUser = await User.findOne({ email: tempUser.email }).exec();
+    //     url = `${usersUrl}/${testUser.id}`;
+    //     unknownId = testUser.id
+    //       .split('')
+    //       .reverse()
+    //       .join('');
+    //   });
+
+    //   it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${invalidCredentials}`);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with "403 Forbidden" when customer credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${customerCredentials}`);
+
+    //     expect(response).to.have.status(403);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Accept', 'text/html')
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with JSON when admin credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.all.keys('_id', 'name', 'email', 'password', 'role');
+    //   });
+
+    //   it('should respond with status code 404 when user does not exist', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(`${usersUrl}/${unknownId}`)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     expect(response).to.have.status(404);
+    //   });
+    // });
+
+    // describe('Updating users: PUT /api/users/{id}', () => {
+    //   const user = {
+    //     role: 'admin'
+    //   };
+
+    //   let testUser;
+    //   let url;
+    //   let unknownId;
+
+    //   beforeEach(async () => {
+    //     const tempUser = users.find(u => u.role === 'customer' && u.email !== customerUser.email);
+    //     testUser = await User.findOne({ email: tempUser.email }).exec();
+    //     url = `${usersUrl}/${testUser.id}`;
+    //     unknownId = testUser.id
+    //       .split('')
+    //       .reverse()
+    //       .join('');
+    //   });
+
+    //   it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
+    //     const response = await chai.request(handleRequest).put(url);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${invalidCredentials}`);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with "403 Forbidden" when customer credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${customerCredentials}`)
+    //       .send(user);
+
+    //     expect(response).to.have.status(403);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(user);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', 'text/html')
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(user);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should update role when admin credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(user);
+
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.all.keys('_id', 'name', 'email', 'password', 'role');
+    //     expect(response.body.role).to.equal('admin');
+    //   });
+
+    //   it('should only update role', async () => {
+    //     const userWithExtra = {
+    //       _id: generateRandomString(24),
+    //       ...getTestUser(),
+    //       role: 'customer'
+    //     };
+
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(userWithExtra);
+
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.all.keys('_id', 'name', 'email', 'password', 'role');
+    //     expect(response.body.email).to.equal(testUser.email);
+    //     expect(response.body.name).to.equal(testUser.name);
+    //     expect(response.body._id).to.equal(testUser.id);
+    //     expect(response.body.role).to.equal('customer');
+    //   });
+
+    //   it('should respond with "400 Bad Request" when role is missing', async () => {
+    //     const userWithExtra = {
+    //       _id: generateRandomString(),
+    //       ...getTestUser()
+    //     };
+
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(userWithExtra);
+
+    //     expect(response).to.have.status(400);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.property('error');
+    //   });
+
+    //   it('should respond with "400 Bad Request" when role is not valid', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send({ role: generateRandomString() });
+
+    //     expect(response).to.have.status(400);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.property('error');
+    //   });
+
+    //   it('should respond with status code 404 when user does not exist', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(`${usersUrl}/${unknownId}`)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(user);
+
+    //     expect(response).to.have.status(404);
+    //   });
+    // });
+
+    // describe('Deleting users: DELETE /api/users/{id}', () => {
+    //   let testUser;
+    //   let url;
+    //   let unknownId;
+
+    //   beforeEach(async () => {
+    //     const tempUser = users[users.length - 1];
+    //     testUser = await User.findOne({ email: tempUser.email }).exec();
+    //     url = `${usersUrl}/${testUser.id}`;
+    //     unknownId = testUser.id
+    //       .split('')
+    //       .reverse()
+    //       .join('');
+    //   });
+
+    //   it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${invalidCredentials}`);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with "403 Forbidden" when customer credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${customerCredentials}`);
+
+    //     expect(response).to.have.status(403);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', 'text/html')
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should delete user when admin credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     const dbUsers = await User.find({});
+    //     expect(response).to.have.status(200);
+    //     expect(dbUsers).to.be.lengthOf(allUsers.length - 1);
+    //   });
+
+    //   it('should return the deleted user', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     const dbUsers = await User.find({});
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(dbUsers).to.be.lengthOf(allUsers.length - 1);
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.all.keys('_id', 'name', 'email', 'password', 'role');
+    //   });
+
+    //   it('should respond with status code 404 when user does not exist', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(`${usersUrl}/${unknownId}`)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     expect(response).to.have.status(404);
+    //   });
+    // });
+
+    // /**
+    //  *  Products endpoints
+    //  */
+    // describe('Viewing all products: GET /api/products', () => {
+    //   it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(productsUrl)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(productsUrl)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${invalidCredentials}`);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is empty', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', '');
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is not properly encoded', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminUser.email}:${adminUser.password}`);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
+    //     const response = await chai.request(handleRequest).get(productsUrl);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(productsUrl)
+    //       .set('Accept', 'text/html');
+
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with JSON when admin credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('array');
+    //   });
+
+    //   it('should respond with JSON when customer credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${customerCredentials}`);
+
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('array');
+    //   });
+
+    //   it('should respond with correct data when admin credentials are received', async () => {
+    //     const productsData = JSON.parse(JSON.stringify(allProducts));
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.deep.equal(productsData);
+    //   });
+
+    //   it('should respond with correct data when customer credentials are received', async () => {
+    //     const productsData = JSON.parse(JSON.stringify(allProducts));
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${customerCredentials}`);
+
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.deep.equal(productsData);
+    //   });
+    // });
+
+    // describe('Viewing a single product: GET /api/products/{id}', () => {
+    //   let testProduct;
+    //   let url;
+    //   let unknownId;
+
+    //   beforeEach(async () => {
+    //     testProduct = await Product.findOne({}).exec();
+    //     url = `${productsUrl}/${testProduct.id}`;
+    //     unknownId = testProduct.id
+    //       .split('')
+    //       .reverse()
+    //       .join('');
+    //   });
+
+    //   it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${invalidCredentials}`);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Accept', 'text/html')
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with JSON when admin credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.all.keys('_id', 'name', 'price', 'description', 'image');
+    //   });
+
+    //   it('should respond with JSON when customer credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${customerCredentials}`);
+
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.all.keys('_id', 'name', 'price', 'description', 'image');
+    //   });
+
+    //   it('should respond with status code 404 when product does not exist', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .get(`${productsUrl}/${unknownId}`)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     expect(response).to.have.status(404);
+    //   });
+    // });
+
+    // describe('Updating products: PUT /api/products/{id}', () => {
+    //   const product = {
+    //     name: 'Test Product',
+    //     price: 45.75,
+    //     image: 'http://www.google.com/',
+    //     description: 'A mysterious test product'
+    //   };
+
+    //   let testProduct;
+    //   let url;
+    //   let unknownId;
+
+    //   beforeEach(async () => {
+    //     testProduct = await Product.findOne({}).exec();
+    //     url = `${productsUrl}/${testProduct.id}`;
+    //     unknownId = testProduct.id
+    //       .split('')
+    //       .reverse()
+    //       .join('');
+    //   });
+
+    //   it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
+    //     const response = await chai.request(handleRequest).put(url);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${invalidCredentials}`);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with "403 Forbidden" when customer credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${customerCredentials}`)
+    //       .send(product);
+
+    //     expect(response).to.have.status(403);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(product);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', 'text/html')
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(product);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should update product when admin credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(product);
+
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.all.keys('_id', 'name', 'description', 'image', 'price');
+    //     expect(response.body._id).to.equal(testProduct.id);
+    //     expect(response.body.name).to.equal(product.name);
+    //     expect(response.body.description).to.equal(product.description);
+    //     expect(response.body.image).to.equal(product.image);
+    //     expect(response.body.price).to.equal(product.price);
+    //   });
+
+    //   it('should allow partial update of product properties', async () => {
+    //     const productWithPartialData = { ...product };
+    //     delete productWithPartialData.description;
+    //     delete productWithPartialData.image;
+
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(productWithPartialData);
+
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.all.keys('_id', 'name', 'description', 'image', 'price');
+    //     expect(response.body._id).to.equal(testProduct.id);
+    //     expect(response.body.description).to.equal(testProduct.description);
+    //     expect(response.body.image).to.equal(testProduct.image);
+    //     expect(response.body.name).to.equal(product.name);
+    //     expect(response.body.price).to.equal(product.price);
+    //   });
+
+    //   it('should respond with "400 Bad Request" when name is empty', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send({ name: '' });
+
+    //     expect(response).to.have.status(400);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.property('error');
+    //   });
+
+    //   it('should respond with "400 Bad Request" when price is not a number', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send({ price: generateRandomString() });
+
+    //     expect(response).to.have.status(400);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.property('error');
+    //   });
+
+    //   it('should respond with "400 Bad Request" when price is 0 (zero)', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send({ price: 0 });
+
+    //     expect(response).to.have.status(400);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.property('error');
+    //   });
+
+    //   it('should respond with "400 Bad Request" when price is negative', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send({ price: -2.5 });
+
+    //     expect(response).to.have.status(400);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.property('error');
+    //   });
+
+    //   it('should respond with status code 404 when product does not exist', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .put(`${productsUrl}/${unknownId}`)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(product);
+
+    //     expect(response).to.have.status(404);
+    //   });
+    // });
+
+    // describe('Deleting products: DELETE /api/products/{id}', () => {
+    //   let testProduct;
+    //   let url;
+    //   let unknownId;
+
+    //   beforeEach(async () => {
+    //     testProduct = await Product.findOne({}).exec();
+    //     url = `${productsUrl}/${testProduct.id}`;
+    //     unknownId = testProduct.id
+    //       .split('')
+    //       .reverse()
+    //       .join('');
+    //   });
+
+    //   it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', contentType);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${invalidCredentials}`);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with "403 Forbidden" when customer credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${customerCredentials}`);
+
+    //     expect(response).to.have.status(403);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', 'text/html')
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should delete product when admin credentials are received', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     const dbProducts = await Product.find({});
+    //     expect(response).to.have.status(200);
+    //     expect(dbProducts).to.be.lengthOf(allProducts.length - 1);
+    //   });
+
+    //   it('should return the deleted user', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(url)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     const dbProducts = await Product.find({});
+    //     expect(response).to.have.status(200);
+    //     expect(response).to.be.json;
+    //     expect(dbProducts).to.be.lengthOf(allProducts.length - 1);
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.all.keys('_id', 'name', 'price', 'image', 'description');
+    //   });
+
+    //   it('should respond with status code 404 when user does not exist', async () => {
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .delete(`${productsUrl}/${unknownId}`)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`);
+
+    //     expect(response).to.have.status(404);
+    //   });
+    // });
+
+    // describe('Create a new product: POST /api/products', () => {
+    //   it('should respond with "406 Not Acceptable" when Accept header is missing', async () => {
+    //     const product = getTestProduct();
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(productsUrl)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(product);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "406 Not Acceptable" when client does not accept JSON', async () => {
+    //     const product = getTestProduct();
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(productsUrl)
+    //       .set('Accept', 'text/html')
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(product);
+    //     expect(response).to.have.status(406);
+    //   });
+
+    //   it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
+    //     const product = getTestProduct();
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(productsUrl)
+    //       .set('Accept', contentType)
+    //       .send(product);
+
+    //     expect(response).to.have.status(401);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization header is missing', async () => {
+    //     const product = getTestProduct();
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(productsUrl)
+    //       .set('Accept', contentType)
+    //       .send(product);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with Basic Auth Challenge when Authorization credentials are incorrect', async () => {
+    //     const product = getTestProduct();
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${invalidCredentials}`)
+    //       .send(product);
+
+    //     expect(response).to.have.status(401);
+    //     expect(response).to.have.header('www-authenticate', /basic/i);
+    //   });
+
+    //   it('should respond with "403 Forbidden" when customer credentials are received', async () => {
+    //     const product = getTestProduct();
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${customerCredentials}`)
+    //       .send(product);
+
+    //     expect(response).to.have.status(403);
+    //   });
+
+    //   it('should respond with "400 Bad Request" when request body is not valid JSON', async () => {
+    //     const body = JSON.stringify(getTestProduct()).substring(1);
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(body);
+    //     expect(response).to.have.status(400);
+    //   });
+
+    //   it('should respond with "400 Bad Request" when name is missing', async () => {
+    //     const product = getTestProduct();
+    //     delete product.name;
+
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(product);
+
+    //     expect(response).to.have.status(400);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.property('error');
+    //   });
+
+    //   it('should respond with "400 Bad Request" when price is missing', async () => {
+    //     const product = getTestProduct();
+    //     delete product.price;
+
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(product);
+
+    //     expect(response).to.have.status(400);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.property('error');
+    //   });
+
+    //   it('should respond with "201 Created" when product creation is successful', async () => {
+    //     const product = getTestProduct();
+
+    //     const response = await chai
+    //       .request(handleRequest)
+    //       .post(productsUrl)
+    //       .set('Accept', contentType)
+    //       .set('Authorization', `Basic ${adminCredentials}`)
+    //       .send(product);
+
+    //     const createdProduct = await Product.findOne({
+    //       name: product.name,
+    //       image: product.image
+    //     }).exec();
+
+    //     const { name, price, image, description } = createdProduct;
+    //     expect(response).to.have.status(201);
+    //     expect(response).to.be.json;
+    //     expect(response.body).to.be.an('object');
+    //     expect(response.body).to.have.all.keys('_id', 'name', 'price', 'description', 'image');
+    //     expect(response.body).to.include({
+    //       _id: createdProduct.id,
+    //       name,
+    //       price,
+    //       image,
+    //       description
+    //     });
+    //   });
+    // });
+
+    // /**
+    //  *  Orders endpoints
+    //  */
     describe('Viewing all orders: GET /api/orders', () => {
       it('should respond with "401 Unauthorized" when Authorization header is missing', async () => {
         const response = await chai

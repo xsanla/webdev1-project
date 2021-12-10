@@ -147,7 +147,7 @@ const createNotification = (message, containerId, isSuccess = true) => {
  */
 const removeElement = (containerId, elementId) => {
   const container = document.getElementById(containerId);
-  container.querySelectorAll(`#${elementId}`).forEach(element => element.remove());
+  container.querySelectorAll('#' + CSS.escape(elementId)).forEach(element => element.remove());
 };
 
 const addProductToCart = productId => {

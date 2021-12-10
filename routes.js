@@ -5,6 +5,7 @@ const { emailInUse, getAllUsers, saveNewUser, validateUser, deleteUserById, upda
 const { getCurrentUser } = require('./auth/auth');
 const controlUser = require('./controllers/users.js');
 const controlProduct = require('./controllers/products.js');
+const controlOrder = require('./controllers/orders.js');
 const User = require('./models/user');
 /**
  * Known API routes and their allowed methods
@@ -68,6 +69,14 @@ const matchUserId = url => {
  */
 const matchProductId =  url => {
 	return matchIdRoute(url, 'products');
+};
+/**
+ * Does the URL match /api/orders/{id}
+ * @param {string} url filePath
+ * @returns {boolean}
+ */
+ const matchOrdertId =  url => {
+	return matchIdRoute(url, 'orders');
 };
 
 const handleRequest = async(request, response) => {
@@ -206,6 +215,41 @@ const handleRequest = async(request, response) => {
 			if(requestSender.role.toUpperCase() === 'ADMIN'){
 				return await controlProduct.deleteProduct(response, id);
 			}
+		}
+	}
+
+	// Get order by order id
+	if(matchOrdertId(filePath)){
+		//check if auth header empty
+		const authHeader = request.headers.authorization;
+		if(authHeader === null || authHeader === undefined || authHeader === ''){
+			return await responseUtils.basicAuthChallenge(response);
+		}
+
+		// Require a correct accept header (require 'application/json' or '*/*')
+		if (!acceptsJson(request)) {
+			return responseUtils.contentTypeNotAcceptable(response);
+		}   
+		
+		// check if auth header properly encoded
+		var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+		if(!base64regex.test(authHeader.split(' ')[1])){
+			return await responseUtils.basicAuthChallenge(response);
+		}
+		const requestSender = await getCurrentUser(request);  
+
+
+		if (requestSender === null || requestSender === undefined) { 
+		return await responseUtils.basicAuthChallenge(response);           
+		}
+		
+		const orderId = filePath.split("/")[3];
+		if(requestSender.role.toUpperCase() === 'ADMIN'){
+			await controlOrder.getSingleOrderAdmin(response, orderId);
+		}
+
+		if(requestSender.role.toUpperCase() === 'CUSTOMER'){
+			await controlOrder.getSingleOrderCustomer(response, orderId, requestSender._id);
 		}
 	}
 
@@ -363,10 +407,47 @@ const handleRequest = async(request, response) => {
       return await responseUtils.basicAuthChallenge(response);           
     } 
 
-	
-    if (requestSender.role.toUpperCase() === 'CUSTOMER' ||requestSender.role.toUpperCase()=== 'ADMIN') {
-		await controlProduct.getAllProducts(response);
+    if (requestSender.role.toUpperCase()=== 'ADMIN') {
+		await controlOrder.getOrdersAdmin(response);
     }
+
+	if (requestSender.role.toUpperCase()=== 'CUSTOMER') {
+		await controlOrder.getOrdersCustomer(response, requestSender._id);
+    }
+  }
+
+  // Create a new order
+  if (filePath === '/api/orders' && method.toUpperCase() === 'POST') {
+
+	//check if auth header empty
+	const authHeader = request.headers.authorization;
+    if(authHeader === null || authHeader === undefined || authHeader === ''){
+      return await responseUtils.basicAuthChallenge(response);
+    }
+	if (!isJson(request)) {
+		return responseUtils.badRequest(response, 'Invalid Content-Type. Expected application/json');
+	}
+	// check if auth header properly encoded
+	var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+    if(!base64regex.test(authHeader.split(' ')[1]))
+	{
+		return await responseUtils.basicAuthChallenge(response);
+	}
+    const requestSender = await getCurrentUser(request);  
+    
+
+    if (requestSender === null || requestSender === undefined) { 
+      return await responseUtils.basicAuthChallenge(response);           
+    } 
+
+    if (requestSender.role.toUpperCase()=== 'ADMIN') {
+		return await responseUtils.forbidden(response);
+    }
+
+	if(requestSender.role.toUpperCase()=== 'CUSTOMER'){
+		const orderData = await parseBodyJson(request);
+		await controlOrder.createOrder(response, orderData, requestSender._id);
+	}
   }
   
 };

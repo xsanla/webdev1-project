@@ -70,6 +70,14 @@ const matchUserId = url => {
 const matchProductId =  url => {
 	return matchIdRoute(url, 'products');
 };
+/**
+ * Does the URL match /api/orders/{id}
+ * @param {string} url filePath
+ * @returns {boolean}
+ */
+ const matchOrdertId =  url => {
+	return matchIdRoute(url, 'orders');
+};
 
 const handleRequest = async(request, response) => {
   const { url, method, headers } = request;
@@ -207,6 +215,41 @@ const handleRequest = async(request, response) => {
 			if(requestSender.role.toUpperCase() === 'ADMIN'){
 				return await controlProduct.deleteProduct(response, id);
 			}
+		}
+	}
+
+	// Get order by order id
+	if(matchOrdertId(filePath)){
+		//check if auth header empty
+		const authHeader = request.headers.authorization;
+		if(authHeader === null || authHeader === undefined || authHeader === ''){
+			return await responseUtils.basicAuthChallenge(response);
+		}
+
+		// Require a correct accept header (require 'application/json' or '*/*')
+		if (!acceptsJson(request)) {
+			return responseUtils.contentTypeNotAcceptable(response);
+		}   
+		
+		// check if auth header properly encoded
+		var base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+		if(!base64regex.test(authHeader.split(' ')[1])){
+			return await responseUtils.basicAuthChallenge(response);
+		}
+		const requestSender = await getCurrentUser(request);  
+
+
+		if (requestSender === null || requestSender === undefined) { 
+		return await responseUtils.basicAuthChallenge(response);           
+		}
+		
+		const orderId = filePath.split("/")[3];
+		if(requestSender.role.toUpperCase() === 'ADMIN'){
+			await controlOrder.getSingleOrderAdmin(response, orderId);
+		}
+
+		if(requestSender.role.toUpperCase() === 'CUSTOMER'){
+			await controlOrder.getSingleOrderCustomer(response, orderId, requestSender._id);
 		}
 	}
 
@@ -365,11 +408,11 @@ const handleRequest = async(request, response) => {
     } 
 
     if (requestSender.role.toUpperCase()=== 'ADMIN') {
-		await controlOrder.getOrderAdmin(response);
+		await controlOrder.getOrdersAdmin(response);
     }
 
 	if (requestSender.role.toUpperCase()=== 'CUSTOMER') {
-		await controlOrder.getOrderCustomer(response, requestSender._id);
+		await controlOrder.getOrdersCustomer(response, requestSender._id);
     }
   }
 

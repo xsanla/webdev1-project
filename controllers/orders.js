@@ -6,15 +6,33 @@ const Order = require('../models/order');
  *
  * @param {http.ServerResponse} response
  */
-const getOrderAdmin = async response => {
+const getOrdersAdmin = async response => {
 
     const orders = await Order.find({}); 
     return await responseUtils.sendJson(response, orders, 200);   
 };
-const getOrderCustomer = async (response, customerId) => {
+
+const getSingleOrderAdmin = async (response, orderId) => {
+	const order = await Order.findOne({_id: orderId}).exec();
+	if(order == null){
+		return await responseUtils.notFound(response);
+	}
+	return await responseUtils.sendJson(response, order, 200);
+}
+
+const getSingleOrderCustomer = async (response, orderId, customerId) => {
+	const order = await Order.findOne({_id: orderId, customerId: customerId}).exec();
+	if(order == null){
+		return await responseUtils.notFound(response);
+	}
+	return await responseUtils.sendJson(response, order, 200);
+}
+
+const getOrdersCustomer = async (response, customerId) => {
 	const orders = await Order.find({customerId: customerId}).exec(); 
     return await responseUtils.sendJson(response, orders, 200);   
 }
+
 
 const createOrder = async (response, orderData, customerId) => {
 
@@ -44,4 +62,4 @@ const createOrder = async (response, orderData, customerId) => {
 
  
  
- module.exports = {getOrderAdmin, createOrder, getOrderCustomer};
+ module.exports = {getOrdersAdmin, createOrder, getOrdersCustomer, getSingleOrderAdmin, getSingleOrderCustomer};

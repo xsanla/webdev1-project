@@ -2,13 +2,9 @@ const User = require('../models/user');
 const responseUtils = require('../utils/responseUtils');
 /**
  * Send all users as JSON
- *
- * @param {http.ServerResponse} response
+ * @param {http.ServerResponse} response http response to be sent
  */
 const getAllUsers = async response => {
-  
-
-
    // if user role is admin  
   
     const users = await User.find({}); 
@@ -19,9 +15,9 @@ const getAllUsers = async response => {
 /**
  * Delete user and send deleted user as JSON
  *
- * @param {http.ServerResponse} response
- * @param {string} userId
- * @param {Object} currentUser (mongoose document object)
+ * @param {http.ServerResponse} response http response to be sent
+ * @param {string} userId the id of the user to delete (mongoose document objects id)
+ * @param {object} currentUser (mongoose document object)
  */
 const deleteUser = async(response, userId, currentUser) => {
 	if(userId == currentUser._id){
@@ -37,10 +33,10 @@ const deleteUser = async(response, userId, currentUser) => {
 /**
  * Update user and send updated user as JSON
  *
- * @param {http.ServerResponse} response
- * @param {string} userId
- * @param {Object} currentUser (mongoose document object)
- * @param {Object} userData JSON data from request body
+ * @param {http.ServerResponse} responsehttp response to be sent
+ * @param {string} userId	the id of the user to update (mongoose document objects id)
+ * @param {object} currentUser (mongoose document object)
+ * @param {object} userData JSON data from request body
  */
 const updateUser = async(response, userId, currentUser, userData) => {
 	
@@ -65,9 +61,9 @@ const updateUser = async(response, userId, currentUser, userData) => {
 /**
  * Send user data as JSON
  *
- * @param {http.ServerResponse} response
- * @param {string} userId
- * @param {Object} currentUser (mongoose document object)
+ * @param {http.ServerResponse} response response to be sent
+ * @param {string} userId the id of the user to view (mongoose document objects id)
+ * @param {object} currentUser (mongoose document object)
  */
 const viewUser = async(response, userId, currentUser) => {
 	const userToFind = await User.findOne({_id: userId}).exec();
@@ -81,8 +77,8 @@ const viewUser = async(response, userId, currentUser) => {
 /**
  * Register new user and send created user back as JSON
  *
- * @param {http.ServerResponse} response
- * @param {Object} userData JSON data from request body
+ * @param {http.ServerResponse} response response to be sent
+ * @param {object} userData JSON data from request body
  */
 const registerUser = async(response, userData) => {
 	const pword = userData.password;

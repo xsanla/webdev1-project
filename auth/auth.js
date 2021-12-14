@@ -6,8 +6,8 @@ const User = require('../models/user');
 /**
  * Get current user based on the request headers
  *
- * @param {http.IncomingMessage} request
- * @returns {Object|null} current authenticated user or null if not yet authenticated
+ * @param {http.IncomingMessage} request a incoming http request
+ * @returns {object|null} current authenticated user or null if not yet authenticated
  */
 const getCurrentUser = async request => {  
 	// TODO: 8.5 Implement getting current user based on the "Authorization" request header
@@ -16,7 +16,6 @@ const getCurrentUser = async request => {
 	// and getUser(email, password) function from utils/users.js to get the currently
 	// logged in user
 
-	//throw new Error('Not Implemented');   
 
 	//check if auth header empty
 	const authHeader = request.headers.authorization;

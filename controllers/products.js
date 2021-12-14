@@ -1,19 +1,22 @@
 const responseUtils = require('../utils/responseUtils');
 const Product = require('../models/product');
 /**
- * Send all products as JSON
- *
- * @param {http.ServerResponse} response
+ * Gets all the products form the database
+ * @param {httpmessage} response the response to be sent out
+ * @returns All the existing products in the database as Json in the body of the response
  */
 const getAllProducts = async response => {
   	const data = await Product.find({});
 
   	return await responseUtils.sendJson(response, data, 200);
 };
+
 /**
- * 
- * @param {*} response 
- * @param {*} productId 
+ * Gets a single product form the database by its id
+ * @param {httpmessage} response the response to be sent out 
+ * @param {object} productId the id of the product to get 
+ * @returns the requested product data as json in the body of the response if the product exists
+ * otherwise returns a not found response
  */
 const getSingleProduct = async (response, productId) => {
 	const data = await Product.findOne({_id: productId}).exec();
@@ -23,10 +26,14 @@ const getSingleProduct = async (response, productId) => {
 	}
 	return await responseUtils.sendJson(response, data, 200);
 }
+
 /**
- * 
- * @param {*} response 
- * @param {*} productData 
+ * Updates the specific products data
+ * @param {httpmessage} response the http response to be sent out 
+ * @param {object} productData the data to be updated onto the product
+ * @param {object} productId the id of the product to be updated
+ * @returns the updated product data as json if product found and updatedata was complete
+ * else returns with badRequest (data missing) or notFound (product doesn't exist)
  */
 const updateProduct = async (response, productData, productId) =>{
 	if(productData.price == null||productData.name == null||isNaN(productData.price)||productData.price <= 0)
@@ -49,10 +56,10 @@ const updateProduct = async (response, productData, productId) =>{
 
 }
 /**
- * 
- * @param {*} response 
- * @param {*} productId 
- * @returns 
+ * Deletes the requested product
+ * @param {httpmessage} response the http response to be sent out 
+ * @param {object} productId the id of the product to delete 
+ * @returns json of the product to delete or notfound response if product not founds
  */
 const deleteProduct = async (response,productId) =>{
 	const deletedProduct = await Product.findOneAndDelete({_id: productId}).exec();
@@ -62,9 +69,11 @@ const deleteProduct = async (response,productId) =>{
 	return await responseUtils.notFound(response);
 }
 /**
- * 
- * @param {*} response 
- * @param {*} productData 
+ * Adds a product to the database
+ * @param {httpmessage} response the http response tobe sent out
+ * @param {object} productData the data of the product to be added 
+ * @returns  if data is incomplete returns badRequest
+ * otherwise returns the newProduct object as json
  */
 const addProduct = async (response, productData) => {
 	if(productData.price == null || productData.name == null)

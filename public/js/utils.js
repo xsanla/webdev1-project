@@ -34,7 +34,7 @@ const getJSON = async url => {
  *
  * @param {string} url resource url on the server
  * @param {string} method "PUT" or "POST"
- * @param {Object|Array} data payload data to be sent to the server as JSON
+ * @param {object|Array} data payload data to be sent to the server as JSON
  * @returns {Promise<*>} promise that resolves to the parsed JSON
  */
 const postOrPutJSON = async(url, method, data = {}) => {
@@ -93,7 +93,7 @@ const deleteResource = async url => {
  * or other HTML elements (remember that IDs must be unique within
  * a document).
  *
- * @returns {string}
+ * @returns {string} the generated id
  */
 const generateId = () => {
   // Shamelessly borrowed from a Gist. See:
@@ -112,7 +112,7 @@ const generateId = () => {
  * Appends a new paragraph inside the container element and gives it
  * class based on the status of the message (success or failure).
  *
- * @param {string} message
+ * @param {string} message the text content to be displayed
  * @param {string} containerId id attribute of the container element
  * @param {boolean} isSuccess whether the message describes a success or a failure
  */
@@ -150,6 +150,12 @@ const removeElement = (containerId, elementId) => {
   container.querySelectorAll('#' + CSS.escape(elementId)).forEach(element => element.remove());
 };
 
+/**
+ * Adds an product to the cart
+ * cart is implemented using session storage
+ * @param {object} productId (mongoose document object id)
+ * @returns the number of items of the added variety in the cart
+ */
 const addProductToCart = productId => {
   const productCount = getProductCountFromCart(productId);
   !productCount
@@ -159,6 +165,12 @@ const addProductToCart = productId => {
   return getProductCountFromCart(productId);
 };
 
+/**
+ * decreases product count of a product in the cart
+ * if item count reaches 0 item is removed from the cart
+ * @param {object} productId (mongoose document object id)
+ * @returns the new item count of the given item
+ */
 const decreaseProductCount = productId => {
   const productCount = getProductCountFromCart(productId);
   if (productCount > 1) {
@@ -171,10 +183,19 @@ const decreaseProductCount = productId => {
   }
 };
 
+/**
+ * Gets a specific item from the cart
+ * @param {object} productId (mongoose document object id)
+ * @returns the item in the cart
+ */
 const getProductCountFromCart = productId => {
   return sessionStorage.getItem(productId);
 };
 
+/**
+ * Gets all the items from the cart
+ * @returns {Array} and array of objects that are in the cart
+ */
 const getAllProductsFromCart = () => {
   return Object.keys(sessionStorage).reduce((array, str) => {
     const item = {
@@ -185,6 +206,9 @@ const getAllProductsFromCart = () => {
   }, []);
 };
 
+/**
+ * clears the cart aka session storage
+ */
 const clearCart = () => {
   sessionStorage.clear();
 };

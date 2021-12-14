@@ -1,10 +1,9 @@
 # Group 
 
-Member1:  name, email, student ID, 
-resposible for: TODO, short description of duties 
+Member1:  Antti Laiho, antti.laiho@tuni.fi, 050270644 
+resposible for: Level 1 implementation, documentation and desgin
 
-Member2:  name, email, student ID, 
-resposible for: TODO, short description of duties 
+
 
 
 
